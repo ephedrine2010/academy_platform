@@ -21,7 +21,7 @@ class AcademyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: BlocProvider(
-        create: (_) => CoursesCubit(),
+        create: (_) => CoursesCubit()..loadCourses(),
         child: const HomePage(),
       ),
     );

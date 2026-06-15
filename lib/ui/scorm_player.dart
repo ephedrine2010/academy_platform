@@ -12,12 +12,13 @@ import '../utils/log.dart';
 class ScormPlayer extends StatefulWidget {
   const ScormPlayer({
     super.key,
-    required this.assetRoot,
+    required this.dir,
     required this.launchFile,
     required this.onSetValue,
   });
 
-  final String assetRoot;
+  /// Absolute filesystem path to the course folder.
+  final String dir;
   final String launchFile;
 
   /// Called for every `cmi.*` value the package writes. The cubit decides what
@@ -43,11 +44,11 @@ class _ScormPlayerState extends State<ScormPlayer> {
 
   Future<void> _init() async {
     try {
-      logScorm('Initializing player for "${widget.assetRoot}/${widget.launchFile}"');
+      logScorm('Initializing player for "${widget.dir}/${widget.launchFile}"');
 
       // 1. Serve the package over loopback HTTP.
       final server = ScormAssetServer(
-        assetRoot: widget.assetRoot,
+        rootDir: widget.dir,
         launchFile: widget.launchFile,
       );
       _runningServer = server;

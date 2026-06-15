@@ -1,0 +1,5 @@
+
+(function() {
+    const data = {"transcripts":[{"name":"captions","cues":[{"start":1257,"text":"Peter: I can't believe it."},{"start":4050,"text":"They took me to court."},{"start":5751,"text":"Now we have to pay $30,000 in penalties"},{"start":8041,"text":"for failing to comply with the compliance notice."},{"start":11510,"text":"And I've been ordered to back-pay Kevin"},{"start":13511,"text":"for his annual leave and leave loading, plus interest,"},{"start":17761,"text":"and then add in my legal fees,"},{"start":21710,"text":"and the damage to my business reputation."},{"start":26500,"text":"I've lost so many bookings since it came out in the media."},{"start":30400,"text":"This has been so bad for my business."},{"start":35000,"text":"I feel"},{"start":37919,"text":"disappointed."},{"start":40509,"text":"I mean, I suppose I was too stubborn."},{"start":43181,"text":"I should've just fixed it up before."},{"start":47710,"text":"I never thought it would come to this."}]}]};
+    window.globalLoadJsAsset('story_content/6Ay4FoUSzSC_transcripts.js', JSON.stringify(data));
+})();

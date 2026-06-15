@@ -1,0 +1,79 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap"
+      rel="stylesheet"
+    />
+    <title>Certificate</title>
+    <style>
+      body {
+        font-family: "Open Sans", sans-serif;
+      }
+      h1 {
+        text-align: center;
+        font-size: 2.8rem;
+        margin-top: -555px;
+        max-width: 601px;
+        min-width: 601px;
+      }
+      h2 {
+        text-align: center;
+        font-size: 2rem;
+        margin-top: 150px;
+        max-width: 601px;
+        min-width: 601px;
+      }
+      h3 {
+        text-align: center;
+        font-size: 1.6rem;
+        margin-top: 310px;
+        max-width: 601px;
+        min-width: 601px;
+      }
+      p {
+        text-align: center;
+        font-size: 2rem;
+        color: white;
+        margin-top: 85px;
+        max-width: 601px;
+        min-width: 601px;
+      }
+      a {
+        text-align: center;
+        font-size: 1.6rem;
+        color: white;
+        margin-top: 85px;
+        max-width: 601px;
+        min-width: 601px;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="certificate.png" style="width: 601px; height: 850px" />
+    <h1>Name</h1>
+	<h2></h2>
+    <h3>Date</h3>
+        <script>
+      var today = new Date();
+      var dd = today.getDate();
+      var mm = today.getMonth() + 1; //January is 0!
+      var yy = today.getFullYear().toString().substr(-2);
+      if (dd < 10) {
+        dd = "0" + dd;
+      }
+      if (mm < 10) {
+        mm = "0" + mm;
+      }
+      fullDate = dd + "/" + mm + "/" + yy;
+      var player = window.opener.GetPlayer();
+      var fullName = player.GetVar("name");
+      document.querySelector("h1").innerHTML = fullName;
+      document.querySelector("h3").innerHTML = fullDate;
+      window.print();
+    </script>
+  </body>
+</html>

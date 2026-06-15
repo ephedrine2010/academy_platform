@@ -1,22 +1,21 @@
 import 'dart:io';
 
-import 'package:flutter/services.dart' show rootBundle;
-
 import '../utils/log.dart';
 
-/// Serves a SCORM package (bundled under `assets/<assetRoot>/`) over a local
-/// loopback HTTP server.
+/// Serves a SCORM package from a folder on disk over a local loopback HTTP
+/// server.
 ///
 /// SCORM content uses relative URLs and an inner `<iframe>`, which do not work
 /// when loaded via `file://`. Serving over `http://127.0.0.1` makes the package
 /// behave exactly as it would inside a real LMS.
 class ScormAssetServer {
-  ScormAssetServer({required this.assetRoot, required this.launchFile});
+  ScormAssetServer({required this.rootDir, required this.launchFile});
 
-  /// Folder inside the Flutter asset bundle, e.g. `assets/golf`.
-  final String assetRoot;
+  /// Absolute filesystem path to the course folder, e.g.
+  /// `D:/.../assets/courses/golf`.
+  final String rootDir;
 
-  /// Launch document relative to [assetRoot], e.g. `shared/launchpage.html`.
+  /// Launch document relative to [rootDir], e.g. `shared/launchpage.html`.
   final String launchFile;
 
   HttpServer? _server;
@@ -26,7 +25,7 @@ class ScormAssetServer {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     _server = server;
     server.listen(_handleRequest);
-    logServer('Listening on 127.0.0.1:${server.port}, root="$assetRoot"');
+    logServer('Listening on 127.0.0.1:${server.port}, root="$rootDir"');
     return 'http://127.0.0.1:${server.port}/$launchFile';
   }
 
@@ -36,20 +35,26 @@ class ScormAssetServer {
   }
 
   Future<void> _handleRequest(HttpRequest request) async {
-    // Strip leading slash and ignore any query string (e.g. assessment params).
-    var path = request.uri.path;
+    // Decode percent-encoding, strip the leading slash, ignore query strings.
+    var path = Uri.decodeComponent(request.uri.path);
     if (path.startsWith('/')) path = path.substring(1);
     if (path.isEmpty) path = launchFile;
 
-    final assetKey = '$assetRoot/$path';
+    final file = File('$rootDir/$path');
     try {
-      final data = await rootBundle.load(assetKey);
+      if (!await file.exists()) {
+        request.response.statusCode = HttpStatus.notFound;
+        logServer('404 $path');
+        await request.response.close();
+        return;
+      }
+      final bytes = await file.readAsBytes();
       request.response.headers.contentType = _contentTypeFor(path);
-      request.response.add(data.buffer.asUint8List());
-      logServer('200 $path (${data.lengthInBytes} bytes)');
-    } catch (e) {
-      request.response.statusCode = HttpStatus.notFound;
-      logServer('404 $path  (asset not found: $assetKey)');
+      request.response.add(bytes);
+      logServer('200 $path (${bytes.length} bytes)');
+    } catch (e, s) {
+      request.response.statusCode = HttpStatus.internalServerError;
+      logError('server $path', e, s);
     }
     await request.response.close();
   }
@@ -61,6 +66,7 @@ class ScormAssetServer {
       case 'htm':
         return ContentType.html;
       case 'js':
+      case 'mjs':
         return ContentType('application', 'javascript', charset: 'utf-8');
       case 'css':
         return ContentType('text', 'css', charset: 'utf-8');
@@ -69,6 +75,9 @@ class ScormAssetServer {
         return ContentType('application', 'xml', charset: 'utf-8');
       case 'json':
         return ContentType('application', 'json', charset: 'utf-8');
+      case 'txt':
+      case 'vtt':
+        return ContentType('text', 'plain', charset: 'utf-8');
       case 'jpg':
       case 'jpeg':
         return ContentType('image', 'jpeg');
@@ -78,6 +87,28 @@ class ScormAssetServer {
         return ContentType('image', 'gif');
       case 'svg':
         return ContentType('image', 'svg+xml');
+      case 'ico':
+        return ContentType('image', 'x-icon');
+      case 'webp':
+        return ContentType('image', 'webp');
+      case 'woff':
+        return ContentType('font', 'woff');
+      case 'woff2':
+        return ContentType('font', 'woff2');
+      case 'ttf':
+        return ContentType('font', 'ttf');
+      case 'otf':
+        return ContentType('font', 'otf');
+      case 'eot':
+        return ContentType('application', 'vnd.ms-fontobject');
+      case 'mp3':
+        return ContentType('audio', 'mpeg');
+      case 'm4a':
+        return ContentType('audio', 'mp4');
+      case 'mp4':
+        return ContentType('video', 'mp4');
+      case 'webm':
+        return ContentType('video', 'webm');
       default:
         return ContentType.binary;
     }

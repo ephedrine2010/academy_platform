@@ -14,6 +14,15 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Academy — Courses'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          Builder(
+            builder: (context) => IconButton(
+              tooltip: 'Rescan courses folder',
+              icon: const Icon(Icons.refresh),
+              onPressed: () => context.read<CoursesCubit>().loadCourses(),
+            ),
+          ),
+        ],
       ),
       body: const Row(
         children: [
@@ -49,23 +58,75 @@ class _CourseSidebar extends StatelessWidget {
                   ),
                 ),
               ),
-              Expanded(
-                child: ListView(
-                  children: [
-                    for (final course in state.courses)
-                      _CourseTile(
-                        course: course,
-                        selected: course.id == state.selectedCourseId,
-                        onTap: () =>
-                            context.read<CoursesCubit>().selectCourse(course.id),
-                      ),
-                  ],
-                ),
-              ),
+              Expanded(child: _CourseList(state: state)),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _CourseList extends StatelessWidget {
+  const _CourseList({required this.state});
+
+  final CoursesState state;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (state.loadError != null) {
+      return _SidebarMessage(
+        icon: Icons.error_outline,
+        text: 'Could not scan courses:\n${state.loadError}',
+      );
+    }
+    if (state.courses.isEmpty) {
+      return const _SidebarMessage(
+        icon: Icons.folder_open,
+        text: 'No courses found.\nDrop a SCORM folder into assets/courses/ '
+            'and press refresh.',
+      );
+    }
+    return ListView(
+      children: [
+        for (final course in state.courses)
+          _CourseTile(
+            course: course,
+            selected: course.id == state.selectedCourseId,
+            onTap: () => context.read<CoursesCubit>().selectCourse(course.id),
+          ),
+      ],
+    );
+  }
+}
+
+class _SidebarMessage extends StatelessWidget {
+  const _SidebarMessage({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.blueGrey, size: 36),
+            const SizedBox(height: 12),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -117,7 +178,7 @@ class _ContentArea extends StatelessWidget {
               child: ScormPlayer(
                 // Key by course so switching courses rebuilds the player.
                 key: ValueKey(course.id),
-                assetRoot: course.assetRoot,
+                dir: course.dir,
                 launchFile: course.launchFile,
                 onSetValue: (key, value) =>
                     context.read<CoursesCubit>().onScormSetValue(key, value),

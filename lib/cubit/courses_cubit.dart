@@ -1,25 +1,41 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../data/course_repository.dart';
 import '../models/course.dart';
 import '../utils/log.dart';
 
 part 'courses_state.dart';
 
 class CoursesCubit extends Cubit<CoursesState> {
-  CoursesCubit()
-      : super(
-          const CoursesState(
-            courses: [
-              Course(
-                id: 'golf',
-                title: 'Golf Explained',
-                assetRoot: 'assets/golf',
-                launchFile: 'shared/launchpage.html',
-              ),
-            ],
-          ),
-        );
+  CoursesCubit({CourseRepository? repository})
+      : _repo = repository ?? CourseRepository(),
+        super(const CoursesState(courses: [], isLoading: true));
+
+  final CourseRepository _repo;
+
+  /// Scans the courses folder on disk and rebuilds the course list. Safe to
+  /// call again to pick up newly dropped-in course folders.
+  Future<void> loadCourses() async {
+    logCubit('loadCourses()');
+    emit(state.copyWith(isLoading: true, clearError: true));
+    try {
+      final courses = await _repo.loadCourses();
+      logCubit('loaded ${courses.length} course(s)');
+      emit(
+        state.copyWith(
+          courses: courses,
+          isLoading: false,
+          // Drop a selection that no longer exists after a rescan.
+          clearSelection:
+              !courses.any((c) => c.id == state.selectedCourseId),
+        ),
+      );
+    } catch (e, s) {
+      logError('CoursesCubit.loadCourses', e, s);
+      emit(state.copyWith(isLoading: false, loadError: e.toString()));
+    }
+  }
 
   /// User picked a course from the side list -> open it and mark in progress.
   void selectCourse(String id) {

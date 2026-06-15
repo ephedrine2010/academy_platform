@@ -26,7 +26,7 @@ class Course extends Equatable {
   const Course({
     required this.id,
     required this.title,
-    required this.assetRoot,
+    required this.dir,
     required this.launchFile,
     this.status = CourseStatus.notStarted,
   });
@@ -34,10 +34,11 @@ class Course extends Equatable {
   final String id;
   final String title;
 
-  /// Folder in the asset bundle, e.g. `assets/golf`.
-  final String assetRoot;
+  /// Absolute filesystem path to the course folder on disk, e.g.
+  /// `D:/mini projects/academy_platform/assets/courses/golf`.
+  final String dir;
 
-  /// Launch document relative to [assetRoot], e.g. `shared/launchpage.html`.
+  /// Launch document relative to [dir], e.g. `shared/launchpage.html`.
   final String launchFile;
 
   final CourseStatus status;
@@ -49,12 +50,12 @@ class Course extends Equatable {
     return Course(
       id: id,
       title: title,
-      assetRoot: assetRoot,
+      dir: dir,
       launchFile: launchFile,
       status: status ?? this.status,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, assetRoot, launchFile, status];
+  List<Object?> get props => [id, title, dir, launchFile, status];
 }
