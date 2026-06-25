@@ -13,6 +13,11 @@ dependencies:
   equatable: ^2.0.5
   webview_windows: ^0.4.0
   xml: ^6.5.0
+  # Microsoft (Entra ID) sign-in: OAuth2 auth-code + PKCE via the system
+  # browser with a loopback redirect. See lib/auth/.
+  url_launcher: ^6.3.0
+  http: ^1.2.0
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

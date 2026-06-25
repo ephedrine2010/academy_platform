@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../auth/cubit/auth_cubit.dart';
 import '../cubit/courses_cubit.dart';
 import '../models/course.dart';
 import 'scorm_player.dart';
@@ -22,16 +23,99 @@ class HomePage extends StatelessWidget {
               onPressed: () => context.read<CoursesCubit>().loadCourses(),
             ),
           ),
+          Builder(
+            builder: (context) => IconButton(
+              tooltip: 'Sign out',
+              icon: const Icon(Icons.logout),
+              onPressed: () => context.read<AuthCubit>().signOut(),
+            ),
+          ),
         ],
       ),
-      body: const Row(
+      body: const Column(
         children: [
-          SizedBox(width: 300, child: _CourseSidebar()),
-          VerticalDivider(width: 1),
-          Expanded(child: _ContentArea()),
+          _AccountBar(),
+          Expanded(
+            child: Row(
+              children: [
+                SizedBox(width: 300, child: _CourseSidebar()),
+                VerticalDivider(width: 1),
+                Expanded(child: _ContentArea()),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+}
+
+/// Shows the signed-in employee's login details across the top of the home
+/// page. Tapping it expands to reveal every ID-token claim.
+class _AccountBar extends StatelessWidget {
+  const _AccountBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthCubit, AuthState>(
+      buildWhen: (a, b) => a.user != b.user,
+      builder: (context, state) {
+        final user = state.user;
+        if (user == null) return const SizedBox.shrink();
+        final scheme = Theme.of(context).colorScheme;
+
+        return Material(
+          color: scheme.primaryContainer,
+          child: ExpansionTile(
+            leading: CircleAvatar(
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+              child: Text(_initials(user.name)),
+            ),
+            title: Text(
+              user.name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text('${user.email}  •  tenant ${user.tenantId}'),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            expandedAlignment: Alignment.centerLeft,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Login details',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  user.details,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
+    return (parts.first.characters.first + parts.last.characters.first)
+        .toUpperCase();
   }
 }
 
