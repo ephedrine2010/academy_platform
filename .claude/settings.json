@@ -2,7 +2,41 @@
   "permissions": {
     "allow": [
       "Bash(flutter pub *)",
-      "Bash(flutter analyze *)"
+      "Bash(flutter analyze *)",
+      "Bash(flutter --version)",
+      "Bash(firebase --version)",
+      "Bash(flutterfire --version)",
+      "Bash(dart pub *)",
+      "Bash(npm --version)",
+      "Bash(npm root *)",
+      "PowerShell(npm install -g firebase-tools)",
+      "PowerShell(firebase --version)",
+      "PowerShell(firebase login:list)",
+      "PowerShell($ff = \"$env:LOCALAPPDATA\\\\Pub\\\\Cache\\\\bin\\\\flutterfire.bat\"; & $ff configure --help)",
+      "PowerShell($ff = \"$env:LOCALAPPDATA\\\\Pub\\\\Cache\\\\bin\\\\flutterfire.bat\"; & $ff configure --project=academyplatform-12c05 --platforms=android,ios,web,macos,linux,windows --yes)",
+      "PowerShell(firebase projects:list 2>&1)",
+      "PowerShell(flutter pub get)",
+      "PowerShell(firebase projects:list --json | ConvertFrom-Json | Select-Object -ExpandProperty result | Where-Object { $_.projectId -eq 'academyplatform-12c05' } | Format-List projectId, displayName, projectNumber)",
+      "PowerShell($ff = \"$env:LOCALAPPDATA\\\\Pub\\\\Cache\\\\bin\\\\flutterfire.bat\"; & $ff configure --project=academyplatform-12c05 --platforms=android,ios,macos,web,windows --android-package-name=com.example.academy_platform --ios-bundle-id=com.example.academyPlatform --macos-bundle-id=com.example.academyPlatform --yes)",
+      "PowerShell(flutter analyze)",
+      "PowerShell(flutter build windows --debug)",
+      "PowerShell(flutter clean; Write-Output \"=== D: free after clean ===\"; Get-PSDrive D | Select-Object @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,2\\)}}, @{N='UsedGB';E={[math]::Round\\($_.Used/1GB,2\\)}})",
+      "PowerShell(flutter pub get 2>&1)",
+      "PowerShell(flutter clean 2>&1 | Select-Object -Last 2; Write-Output \"=== D: free after cleanup ===\"; df -h /d 2>$null; Get-PSDrive D | Select-Object @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,2\\)}})",
+      "PowerShell(flutter analyze 2>&1)",
+      "PowerShell(Get-PSDrive C,D | Select-Object Name, @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,2\\)}}, @{N='UsedGB';E={[math]::Round\\($_.Used/1GB,2\\)}})",
+      "Bash(powershell.exe -Command 'Get-PSDrive D | Select-Object @{N='\\\\''FreeGB'\\\\'';E={[math]::Round\\($_.Free/1GB,2\\)}}')",
+      "PowerShell($nuget = \"C:\\\\Users\\\\ephed\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Links\\\\nuget.exe\"; Write-Output \"=== nuget exists? ===\"; Test-Path $nuget; Write-Output \"=== run nuget install WIL to scratch dir ===\"; & $nuget install Microsoft.Windows.ImplementationLibrary -Version 1.0.220914.1 -ExcludeVersion -OutputDirectory \"$env:TEMP\\\\nugettest\" 2>&1 | Select-Object -Last 25)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(find ~/AppData/Local/Pub/Cache/hosted/pub.dev/material_table_view-5.5.1 -maxdepth 2 -name \"*.dart\" | head -50; echo \"---README---\"; ls ~/AppData/Local/Pub/Cache/hosted/pub.dev/material_table_view-5.5.1)",
+      "Read(//c/Users/ephed/AppData/Local/Pub/Cache/hosted/pub.dev/material_table_view-5.5.1/**)",
+      "Read(//c/Users/ephed/AppData/Local/Pub/Cache/hosted/pub.dev/material_table_view-5.5.1/lib/**)",
+      "Bash(cd ~/AppData/Local/Pub/Cache/hosted/pub.dev/material_table_view-5.5.1; sed -n '1,140p' lib/material_table_view.dart)",
+      "Bash(cd ~/AppData/Local/Pub/Cache/hosted/pub.dev/material_table_view-5.5.1; sed -n '1,90p' lib/src/table_typedefs.dart; echo \"=====TABLEVIEW CTOR=====\"; grep -n \"TableView.builder\\\\|required\\\\|this\\\\.\" lib/src/table_view.dart | head -80)",
+      "Bash(cd ~/AppData/Local/Pub/Cache/hosted/pub.dev/material_table_view-5.5.1; grep -n \"const TableColumn\\\\|this\\\\.\\\\|required this\" lib/src/table_column.dart | head -40; echo \"===headerHeight/footerHeight===\"; grep -n \"headerHeight\\\\|footerHeight\" lib/src/table_view.dart | head)",
+      "PowerShell(Get-PSDrive -PSProvider FileSystem | Select-Object Name, @{N='UsedGB';E={[math]::Round\\($_.Used/1GB,1\\)}}, @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,1\\)}} | Format-Table -AutoSize; \"build dir size:\"; if \\(Test-Path 'D:\\\\mini projects\\\\academy_platform\\\\build'\\) { '{0:N1} GB' -f \\(\\(Get-ChildItem 'D:\\\\mini projects\\\\academy_platform\\\\build' -Recurse -ErrorAction SilentlyContinue | Measure-Object Length -Sum\\).Sum/1GB\\) })",
+      "PowerShell(flutter clean; if \\($?\\) { Get-PSDrive D | Select-Object @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,1\\)}} })",
+      "PowerShell(flutter run -d chrome)"
     ]
   }
 }

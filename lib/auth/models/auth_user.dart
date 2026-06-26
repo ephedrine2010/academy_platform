@@ -7,10 +7,24 @@ class AuthUser extends Equatable {
     required this.id,
     required this.name,
     required this.email,
-    required this.tenantId,
-    required this.claims,
-    required this.accessToken,
+    this.tenantId = '—',
+    this.claims = const {},
+    this.accessToken = '',
   });
+
+  /// Built from a Firebase email/password sign-in (the active auth path while
+  /// Microsoft/Entra is disabled). Microsoft-specific fields stay empty.
+  factory AuthUser.fromFirebase({
+    required String id,
+    required String name,
+    required String email,
+  }) =>
+      AuthUser(
+        id: id,
+        name: name,
+        email: email,
+        claims: const {'provider': 'firebase / email-password'},
+      );
 
   /// Stable user object id (`oid`, falls back to `sub`).
   final String id;
