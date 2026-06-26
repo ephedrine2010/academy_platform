@@ -13,7 +13,8 @@ class RegionRepository {
         (snap) => snap.docs.map(Region.fromDoc).toList(),
       );
 
-  Future<void> add(String name) => _col.add({'name': name});
+  /// Use the region name as the Firestore document id.
+  Future<void> add(String name) => _col.doc(name).set({'name': name});
 
   Future<void> rename(String id, String name) =>
       _col.doc(id).update({'name': name});

@@ -4,30 +4,30 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:material_table_view/material_table_view.dart';
 
 import '../../theme/app_theme.dart';
-import '../cubit/contractors_cubit.dart';
 import '../cubit/regions_cubit.dart';
-import '../models/contractor.dart';
+import '../cubit/trainers_cubit.dart';
+import '../models/trainer.dart';
 import 'admin_widgets.dart';
-import 'contractor_edit_dialog.dart';
+import 'trainer_edit_dialog.dart';
 
-/// Admin screen: list / add / edit / delete contractors and assign them to
+/// Admin screen: list / add / edit / delete trainers and assign them to
 /// regions (many-to-many, freely re-assignable).
-class ContractorsPage extends StatelessWidget {
-  const ContractorsPage({super.key});
+class TrainersPage extends StatelessWidget {
+  const TrainersPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ContractorsCubit, ContractorsState>(
+    return BlocBuilder<TrainersCubit, TrainersState>(
       builder: (context, state) {
-        final cubit = context.read<ContractorsCubit>();
+        final cubit = context.read<TrainersCubit>();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AdminToolbar(
               icon: TablerIcons.users,
-              title: 'Contractors',
-              subtitle: '${state.contractors.length} contractor(s)',
-              actionLabel: 'Add contractor',
+              title: 'Trainers',
+              subtitle: '${state.trainers.length} trainer(s)',
+              actionLabel: 'Add trainer',
               onAction: () => _edit(context, cubit),
             ),
             Expanded(child: _Body(state: state)),
@@ -39,17 +39,17 @@ class ContractorsPage extends StatelessWidget {
 
   static Future<void> _edit(
     BuildContext context,
-    ContractorsCubit cubit, {
-    Contractor? contractor,
+    TrainersCubit cubit, {
+    Trainer? trainer,
   }) async {
     final regions = context.read<RegionsCubit>().state.regions;
-    final result = await ContractorEditDialog.show(
+    final result = await TrainerEditDialog.show(
       context,
       regions: regions,
-      existing: contractor,
+      existing: trainer,
     );
     if (result == null) return;
-    if (contractor == null) {
+    if (trainer == null) {
       await cubit.add(result);
     } else {
       await cubit.update(result);
@@ -60,7 +60,7 @@ class ContractorsPage extends StatelessWidget {
 class _Body extends StatelessWidget {
   const _Body({required this.state});
 
-  final ContractorsState state;
+  final TrainersState state;
 
   @override
   Widget build(BuildContext context) {
@@ -70,48 +70,51 @@ class _Body extends StatelessWidget {
     if (state.error != null) {
       return AdminMessage(
         icon: TablerIcons.alert_triangle,
-        text: 'Could not load contractors:\n${state.error}',
+        text: 'Could not load trainers:\n${state.error}',
       );
     }
-    if (state.contractors.isEmpty) {
+    if (state.trainers.isEmpty) {
       return const AdminMessage(
         icon: TablerIcons.user_off,
-        text: 'No contractors yet.\nUse “Add contractor” to create one.',
+        text: 'No trainers yet.\nUse “Add trainer” to create one.',
       );
     }
 
-    final cubit = context.read<ContractorsCubit>();
-    final contractors = state.contractors;
-    // Region-id -> name lookup for rendering the assignment chips.
-    final regionNames = {
-      for (final r in context.watch<RegionsCubit>().state.regions) r.id: r.name,
-    };
+    final cubit = context.read<TrainersCubit>();
+    final trainers = state.trainers;
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: TableView.builder(
         columns: const [
-          TableColumn(width: 200, flex: 2),
-          TableColumn(width: 220, flex: 2),
-          TableColumn(width: 140, flex: 1),
-          TableColumn(width: 220, flex: 2),
-          TableColumn(width: 110),
+          TableColumn(width: 100, flex: 1),
+          TableColumn(width: 150, flex: 2),
+          TableColumn(width: 180, flex: 2),
+          TableColumn(width: 110, flex: 1),
+          TableColumn(width: 150, flex: 2),
+          TableColumn(width: 112),
         ],
-        rowCount: contractors.length,
+        rowCount: trainers.length,
         rowHeight: 60,
         headerHeight: 44,
         headerBuilder: (context, contentBuilder) => contentBuilder(
           context,
           (context, column) => _HeaderCell(
-            label: const ['Name', 'Email', 'Phone', 'Regions', 'Actions'][column],
+            label: const [
+              'Trainer ID',
+              'Name',
+              'Email',
+              'Phone',
+              'Regions',
+              'Actions'
+            ][column],
           ),
         ),
         rowBuilder: (context, row, contentBuilder) {
-          final c = contractors[row];
+          final t = trainers[row];
           return contentBuilder(
             context,
-            (context, column) =>
-                _cell(context, cubit, c, regionNames, column),
+            (context, column) => _cell(context, cubit, t, column),
           );
         },
       ),
@@ -120,20 +123,21 @@ class _Body extends StatelessWidget {
 
   Widget _cell(
     BuildContext context,
-    ContractorsCubit cubit,
-    Contractor c,
-    Map<String, String> regionNames,
+    TrainersCubit cubit,
+    Trainer t,
     int column,
   ) {
     switch (column) {
       case 0:
-        return _TextCell(c.name, weight: FontWeight.w600);
+        return _TextCell(t.trainerId, weight: FontWeight.w600);
       case 1:
-        return _TextCell(c.email);
+        return _TextCell(t.name, weight: FontWeight.w600);
       case 2:
-        return _TextCell(c.phone);
+        return _TextCell(t.email);
       case 3:
-        if (c.regionIds.isEmpty) {
+        return _TextCell(t.phone);
+      case 4:
+        if (t.regionNames.isEmpty) {
           return _TextCell('—', color: Theme.of(context).colorScheme.outline);
         }
         return Align(
@@ -142,10 +146,10 @@ class _Body extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                for (final id in c.regionIds)
+                for (final name in t.regionNames)
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
-                    child: _RegionChip(name: regionNames[id] ?? '?'),
+                    child: _RegionChip(name: name),
                   ),
               ],
             ),
@@ -153,19 +157,19 @@ class _Body extends StatelessWidget {
         );
       default:
         return Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             IconButton(
               tooltip: 'Edit',
               icon: const Icon(TablerIcons.pencil, size: 18),
               onPressed: () =>
-                  ContractorsPage._edit(context, cubit, contractor: c),
+                  TrainersPage._edit(context, cubit, trainer: t),
             ),
             IconButton(
               tooltip: 'Delete',
               icon: const Icon(TablerIcons.trash, size: 18),
               color: AppColors.red,
-              onPressed: () => _confirmDelete(context, cubit, c),
+              onPressed: () => _confirmDelete(context, cubit, t),
             ),
           ],
         );
@@ -174,14 +178,14 @@ class _Body extends StatelessWidget {
 
   Future<void> _confirmDelete(
     BuildContext context,
-    ContractorsCubit cubit,
-    Contractor c,
+    TrainersCubit cubit,
+    Trainer t,
   ) async {
     final ok = await confirmDelete(
       context,
-      message: 'Delete contractor “${c.name}”?',
+      message: 'Delete trainer “${t.name}”?',
     );
-    if (ok) await cubit.delete(c.id);
+    if (ok) await cubit.delete(t.id);
   }
 }
 

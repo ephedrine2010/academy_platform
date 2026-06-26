@@ -4,11 +4,11 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../academy/cubit/courses_cubit.dart';
 import '../academy/ui/home_page.dart';
-import '../admin/cubit/contractors_cubit.dart';
 import '../admin/cubit/regions_cubit.dart';
+import '../admin/cubit/trainers_cubit.dart';
 import '../admin/ui/admin_dashboard_page.dart';
-import '../admin/ui/contractors_page.dart';
 import '../admin/ui/regions_page.dart';
+import '../admin/ui/trainers_page.dart';
 import '../auth/cubit/auth_cubit.dart';
 import '../theme/app_theme.dart';
 
@@ -25,9 +25,14 @@ class _Tab {
 /// layouts, a Drawer on narrow ones) plus the selected tab's content. The tab
 /// set depends on the signed-in role.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.isAdmin, this.accessToken});
+  const AppShell({super.key, required this.role, this.accessToken});
 
-  final bool isAdmin;
+  /// The signed-in user's role. Determines which tabs show: a [AppRole.manager]
+  /// sees Dashboard/Regions/Trainers/Courses; a [AppRole.trainer] sees only
+  /// Courses. (Trainees never reach the shell — they get the user home screen.)
+  final AppRole role;
+
+  bool get _isManager => role == AppRole.manager;
 
   /// OneDrive Graph access token, forwarded to the Courses tab so it can stream
   /// SCORM packages from the shared OneDrive folder when configured.
@@ -41,7 +46,7 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
 
   List<_Tab> get _tabs => [
-        if (widget.isAdmin) ...[
+        if (widget._isManager) ...[
           _Tab(
             label: 'Dashboard',
             icon: TablerIcons.layout_dashboard,
@@ -53,9 +58,9 @@ class _AppShellState extends State<AppShell> {
             builder: (_) => const RegionsPage(),
           ),
           _Tab(
-            label: 'Contractors',
+            label: 'Trainers',
             icon: TablerIcons.users,
-            builder: (_) => const ContractorsPage(),
+            builder: (_) => const TrainersPage(),
           ),
         ],
         _Tab(
@@ -74,7 +79,7 @@ class _AppShellState extends State<AppShell> {
     final tabs = _tabs;
     final index = _index.clamp(0, tabs.length - 1);
 
-    // Admin tabs share live region + contractor data, created once here.
+    // Admin tabs share live region + trainer data, created once here.
     Widget shell = LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
@@ -86,11 +91,11 @@ class _AppShellState extends State<AppShell> {
       },
     );
 
-    if (widget.isAdmin) {
+    if (widget._isManager) {
       shell = MultiBlocProvider(
         providers: [
           BlocProvider(create: (_) => RegionsCubit()),
-          BlocProvider(create: (_) => ContractorsCubit()),
+          BlocProvider(create: (_) => TrainersCubit()),
         ],
         child: shell,
       );
@@ -116,23 +121,42 @@ class _WideLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A fixed-width sidebar. The NavigationRail must live inside a bounded-width
+    // box: placed bare in the Row it would receive unbounded width constraints,
+    // and the full-width footer content would then try to lay out at infinite
+    // width and crash. Header and footer are siblings of the rail (not its
+    // leading/trailing) so the footer naturally pins to the bottom.
     return Scaffold(
       body: Row(
         children: [
-          NavigationRail(
-            extended: true,
-            minExtendedWidth: 220,
-            selectedIndex: index,
-            onDestinationSelected: onSelect,
-            leading: const _RailHeader(),
-            trailing: const Expanded(child: _RailFooter()),
-            destinations: [
-              for (final t in tabs)
-                NavigationRailDestination(
-                  icon: Icon(t.icon),
-                  label: Text(t.label),
-                ),
-            ],
+          SizedBox(
+            width: 220,
+            child: Material(
+              color: AppColors.tealDark,
+              child: Column(
+                children: [
+                  const _RailHeader(),
+                  Expanded(
+                    child: NavigationRail(
+                      extended: true,
+                      minExtendedWidth: 220,
+                      backgroundColor: Colors.transparent,
+                      groupAlignment: -1.0,
+                      selectedIndex: index,
+                      onDestinationSelected: onSelect,
+                      destinations: [
+                        for (final t in tabs)
+                          NavigationRailDestination(
+                            icon: Icon(t.icon),
+                            label: Text(t.label),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const _RailFooter(),
+                ],
+              ),
+            ),
           ),
           const VerticalDivider(width: 1),
           Expanded(child: body),
@@ -158,7 +182,21 @@ class _NarrowLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(tabs[index].label)),
+      appBar: AppBar(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/brand/logo/logo-white.png', height: 32),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                tabs[index].label,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
       drawer: Drawer(
         child: SafeArea(
           child: Column(
@@ -233,45 +271,53 @@ class _RailFooter extends StatelessWidget {
       buildWhen: (a, b) => a.user != b.user || a.role != b.role,
       builder: (context, state) {
         final user = state.user;
-        return Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.tealLight,
-                    foregroundColor: Colors.white,
-                    child: Text(_initials(user?.name ?? '?')),
-                  ),
-                  title: Text(
-                    user?.name ?? 'User',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  subtitle: Text(
-                    state.isAdmin ? 'Administrator' : 'Trainee',
-                    style: const TextStyle(fontSize: 11),
-                  ),
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.tealLight,
+                  foregroundColor: Colors.white,
+                  child: Text(_initials(user?.name ?? '?')),
                 ),
-                const SizedBox(height: 4),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => context.read<AuthCubit>().signOut(),
-                    icon: const Icon(TablerIcons.logout, size: 18),
-                    label: const Text('Sign out'),
-                  ),
+                title: Text(
+                  user?.name ?? 'User',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13),
                 ),
-              ],
-            ),
+                subtitle: Text(
+                  _roleLabel(state.role),
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.read<AuthCubit>().signOut(),
+                  icon: const Icon(TablerIcons.logout, size: 18),
+                  label: const Text('Sign out'),
+                ),
+              ),
+            ],
           ),
         );
       },
     );
+  }
+
+  static String _roleLabel(AppRole role) {
+    switch (role) {
+      case AppRole.manager:
+        return 'Manager';
+      case AppRole.trainer:
+        return 'Trainer';
+      case AppRole.trainee:
+        return 'Trainee';
+    }
   }
 
   static String _initials(String name) {

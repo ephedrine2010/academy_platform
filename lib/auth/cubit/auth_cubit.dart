@@ -49,6 +49,7 @@ class AuthCubit extends Cubit<AuthState> {
       final role = await _resolveRole(user.email);
       _printLoginDetails(user, role);
       emit(state.copyWith(status: AuthStatus.signedIn, user: user, role: role));
+      
     } on fb.FirebaseAuthException catch (e) {
       logError('AuthCubit.signInWithEmail', e);
       emit(state.copyWith(status: AuthStatus.signedOut, error: _friendly(e)));
@@ -103,24 +104,34 @@ class AuthCubit extends Cubit<AuthState> {
     emit(const AuthState());
   }
 
-  /// admin if the email has a matching doc in `admins`, otherwise trainee.
-  /// The admin docs are created by hand in the Firebase console for the POC;
-  /// the stored `email` must match the sign-in email exactly.
+  /// Resolves the role from the matching `admins` doc's `role` field
+  /// (`admin01` → manager, `admin02` → trainer). No matching doc — or any
+  /// unrecognised value — means a plain [AppRole.trainee]. The admin docs are
+  /// created by hand in the Firebase console; the stored `email` must match the
+  /// sign-in email exactly.
   Future<AppRole> _resolveRole(String email) async {
+    final needle = email.trim().toLowerCase();
     try {
+      logAuth('Resolving role for "$needle" from admins…');
       final snap = await _db
           .collection('admins')
-          .where('email', isEqualTo: email)
+          .where('email', isEqualTo: needle)
           .limit(1)
           .get();
+      logAuth('admins query returned ${snap.docs.length} doc(s)');
       if (snap.docs.isNotEmpty) {
-        logAuth('Role resolved: admin');
-        return AppRole.admin;
+        final raw = snap.docs.first.data()['role'];
+        final role = AppRole.fromAdminRole(raw as String?);
+        logAuth('Role field = "$raw" → ${role.name}');
+        return role;
       }
     } catch (e, s) {
-      logError('AuthCubit._resolveRole', e, s);
+      // Most often a Firestore permission-denied (security rules blocking the
+      // read) — that lands here and would otherwise look like "just a trainee".
+      logError('AuthCubit._resolveRole (read failed — check Firestore rules)',
+          e, s);
     }
-    logAuth('Role resolved: trainee');
+    logAuth('No matching admin doc — role resolved: trainee');
     return AppRole.trainee;
   }
 

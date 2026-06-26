@@ -2,8 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
 /// A company region (East, West, Central, …). Stored in the `regions`
-/// collection. The region↔contractor link lives on the contractor side
-/// (`Contractor.regionIds`), so a region holds only its name here.
+/// collection. The region↔trainer link lives on the trainer side
+/// (`Trainer.regionNames`), so a region holds only its name here.
 class Region extends Equatable {
   const Region({required this.id, required this.name});
 

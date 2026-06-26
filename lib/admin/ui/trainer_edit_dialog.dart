@@ -2,59 +2,62 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../theme/app_theme.dart';
-import '../models/contractor.dart';
 import '../models/region.dart';
+import '../models/trainer.dart';
 
-/// Add/edit form for a contractor, including the many-to-many region
-/// assignment (rendered as selectable chips). Returns the edited [Contractor]
-/// (id is empty for a new one), or null if cancelled.
-class ContractorEditDialog extends StatefulWidget {
-  const ContractorEditDialog({
+/// Add/edit form for a trainer, including the many-to-many region assignment
+/// (rendered as selectable chips). Returns the edited [Trainer] (id is empty
+/// for a new one), or null if cancelled.
+class TrainerEditDialog extends StatefulWidget {
+  const TrainerEditDialog({
     super.key,
     required this.regions,
     this.existing,
   });
 
   final List<Region> regions;
-  final Contractor? existing;
+  final Trainer? existing;
 
-  static Future<Contractor?> show(
+  static Future<Trainer?> show(
     BuildContext context, {
     required List<Region> regions,
-    Contractor? existing,
+    Trainer? existing,
   }) {
-    return showDialog<Contractor>(
+    return showDialog<Trainer>(
       context: context,
       builder: (_) =>
-          ContractorEditDialog(regions: regions, existing: existing),
+          TrainerEditDialog(regions: regions, existing: existing),
     );
   }
 
   @override
-  State<ContractorEditDialog> createState() => _ContractorEditDialogState();
+  State<TrainerEditDialog> createState() => _TrainerEditDialogState();
 }
 
-class _ContractorEditDialogState extends State<ContractorEditDialog> {
+class _TrainerEditDialogState extends State<TrainerEditDialog> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _trainerId;
   late final TextEditingController _name;
   late final TextEditingController _email;
   late final TextEditingController _phone;
   late final TextEditingController _address;
-  late final Set<String> _regionIds;
+  late final Set<String> _regionNames;
 
   @override
   void initState() {
     super.initState();
     final e = widget.existing;
+    _trainerId = TextEditingController(text: e?.trainerId ?? '');
     _name = TextEditingController(text: e?.name ?? '');
     _email = TextEditingController(text: e?.email ?? '');
     _phone = TextEditingController(text: e?.phone ?? '');
     _address = TextEditingController(text: e?.address ?? '');
-    _regionIds = {...?e?.regionIds};
+    _regionNames = {...?e?.regionNames};
   }
 
   @override
   void dispose() {
+    _trainerId.dispose();
     _name.dispose();
     _email.dispose();
     _phone.dispose();
@@ -64,13 +67,14 @@ class _ContractorEditDialogState extends State<ContractorEditDialog> {
 
   void _save() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final result = Contractor(
+    final result = Trainer(
       id: widget.existing?.id ?? '',
+      trainerId: _trainerId.text.trim(),
       name: _name.text.trim(),
       email: _email.text.trim(),
       phone: _phone.text.trim(),
       address: _address.text.trim(),
-      regionIds: _regionIds.toList(),
+      regionNames: _regionNames.toList(),
     );
     Navigator.pop(context, result);
   }
@@ -79,7 +83,7 @@ class _ContractorEditDialogState extends State<ContractorEditDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-        widget.existing == null ? 'Add contractor' : 'Edit contractor',
+        widget.existing == null ? 'Add trainer' : 'Edit trainer',
       ),
       content: SizedBox(
         width: 420,
@@ -90,6 +94,9 @@ class _ContractorEditDialogState extends State<ContractorEditDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _field(_trainerId, 'Trainer ID', TablerIcons.id_badge_2,
+                    required: true),
+                const SizedBox(height: 12),
                 _field(_name, 'Name', TablerIcons.user, required: true),
                 const SizedBox(height: 12),
                 _field(
@@ -136,15 +143,15 @@ class _ContractorEditDialogState extends State<ContractorEditDialog> {
                       for (final r in widget.regions)
                         FilterChip(
                           label: Text(r.name),
-                          selected: _regionIds.contains(r.id),
+                          selected: _regionNames.contains(r.name),
                           selectedColor:
                               AppColors.accentFor(r.name).withValues(alpha: 0.2),
                           checkmarkColor: AppColors.accentFor(r.name),
                           onSelected: (on) => setState(() {
                             if (on) {
-                              _regionIds.add(r.id);
+                              _regionNames.add(r.name);
                             } else {
-                              _regionIds.remove(r.id);
+                              _regionNames.remove(r.name);
                             }
                           }),
                         ),

@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // POC ruleset. There is no role lookup in rules yet (admin docs are keyed by
+    // employee id and matched by their `email` field, not the Firebase Auth UID),
+    // so we can't gate writes by role here. Until that's designed, the rule is
+    // simply: any signed-in user may read and write anything. This is what keeps
+    // the admin screens (regions, trainers stored under `admins/{id}` with
+    // role `admin02`, etc.) working without permission-denied errors.
+    //
+    // SECURITY: This is intentionally permissive for development. Tighten before
+    // production — gate writes by role (custom claims or admin docs keyed by
+    // auth UID) and lock down per-collection access.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

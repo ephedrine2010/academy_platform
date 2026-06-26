@@ -11,7 +11,7 @@ import 'theme/app_theme.dart';
 /// Dev preview switch: when true, skip the login screen and open the main
 /// shell directly (as admin, so every tab shows) to eyeball the layout.
 /// Set back to false to restore the normal login → role-gated flow.
-const bool kSkipAuthForPreview = true;
+const bool kSkipAuthForPreview = false;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +35,7 @@ class AcademyApp extends StatelessWidget {
       home: BlocProvider(
         create: (_) => AuthCubit(),
         child: kSkipAuthForPreview
-            ? const AppShell(isAdmin: true)
+            ? const AppShell(role: AppRole.manager)
             : const AuthGate(),
       ),
     );

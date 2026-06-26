@@ -163,7 +163,7 @@ class _Body extends StatelessWidget {
     final ok = await confirmDelete(
       context,
       message: 'Delete region “${region.name}”?\n'
-          'It will also be removed from any assigned contractors.',
+          'It will also be removed from any assigned trainers.',
     );
     if (ok) await cubit.delete(region.id);
   }

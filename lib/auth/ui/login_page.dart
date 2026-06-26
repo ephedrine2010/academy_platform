@@ -142,24 +142,9 @@ class _Brand extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: AppColors.teal,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(TablerIcons.school, color: Colors.white, size: 34),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Academy Platform',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.teal,
-              ),
-        ),
-        const SizedBox(height: 4),
+        // Full-colour Nahdi Academy mark on the light card.
+        Image.asset('assets/brand/logo/logo.png', height: 72),
+        const SizedBox(height: 20),
         Text(
           'Sign in to continue',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
