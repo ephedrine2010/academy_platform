@@ -20,7 +20,9 @@ class AuthGate extends StatelessWidget {
       builder: (context, state) {
         if (state.isSignedIn) {
           return BlocProvider(
-            create: (_) => CoursesCubit()..loadCourses(),
+            create: (_) => CoursesCubit(
+              accessToken: state.user?.accessToken,
+            )..loadCourses(),
             child: const HomePage(),
           );
         }

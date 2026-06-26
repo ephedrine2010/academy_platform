@@ -53,13 +53,17 @@ class AuthConfig {
   static String get tokenEndpoint => '$authority/oauth2/v2.0/token';
 
   /// Scopes requested. `offline_access` yields a refresh token; `User.Read`
-  /// lets us read the signed-in user's basic profile from Microsoft Graph.
+  /// lets us read the signed-in user's basic profile from Microsoft Graph;
+  /// `Files.Read.All` lets us read SCORM course files from the shared OneDrive
+  /// folder (see OneDriveConfig). Drop `Files.Read.All` if you only ever serve
+  /// courses from the local `assets/courses/` folder.
   static const List<String> scopes = [
     'openid',
     'profile',
     'email',
     'offline_access',
     'User.Read',
+    'Files.Read.All',
   ];
 
   /// True once the required placeholder(s) have been replaced with real GUIDs.

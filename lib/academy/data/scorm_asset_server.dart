@@ -1,21 +1,23 @@
 import 'dart:io';
 
 import '../utils/log.dart';
+import 'scorm_file_source.dart';
 
-/// Serves a SCORM package from a folder on disk over a local loopback HTTP
-/// server.
+/// Serves a SCORM package over a local loopback HTTP server, reading each file
+/// from a [ScormFileSource] (local disk, or a shared OneDrive folder).
 ///
 /// SCORM content uses relative URLs and an inner `<iframe>`, which do not work
 /// when loaded via `file://`. Serving over `http://127.0.0.1` makes the package
-/// behave exactly as it would inside a real LMS.
+/// behave exactly as it would inside a real LMS — and, because the WebView only
+/// ever talks to this loopback origin, the injected `window.API` adapter shares
+/// the package's origin no matter where the bytes actually come from.
 class ScormAssetServer {
-  ScormAssetServer({required this.rootDir, required this.launchFile});
+  ScormAssetServer({required this.source, required this.launchFile});
 
-  /// Absolute filesystem path to the course folder, e.g.
-  /// `D:/.../assets/courses/golf`.
-  final String rootDir;
+  /// Where to read course files from, one relative path at a time.
+  final ScormFileSource source;
 
-  /// Launch document relative to [rootDir], e.g. `shared/launchpage.html`.
+  /// Launch document relative to the course root, e.g. `shared/launchpage.html`.
   final String launchFile;
 
   HttpServer? _server;
@@ -25,13 +27,14 @@ class ScormAssetServer {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     _server = server;
     server.listen(_handleRequest);
-    logServer('Listening on 127.0.0.1:${server.port}, root="$rootDir"');
+    logServer('Listening on 127.0.0.1:${server.port}, source=${source.runtimeType}');
     return 'http://127.0.0.1:${server.port}/$launchFile';
   }
 
   Future<void> stop() async {
     await _server?.close(force: true);
     _server = null;
+    source.dispose();
   }
 
   Future<void> _handleRequest(HttpRequest request) async {
@@ -40,15 +43,14 @@ class ScormAssetServer {
     if (path.startsWith('/')) path = path.substring(1);
     if (path.isEmpty) path = launchFile;
 
-    final file = File('$rootDir/$path');
     try {
-      if (!await file.exists()) {
+      final bytes = await source.read(path);
+      if (bytes == null) {
         request.response.statusCode = HttpStatus.notFound;
         logServer('404 $path');
         await request.response.close();
         return;
       }
-      final bytes = await file.readAsBytes();
       request.response.headers.contentType = _contentTypeFor(path);
       request.response.add(bytes);
       logServer('200 $path (${bytes.length} bytes)');

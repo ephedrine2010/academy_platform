@@ -2,17 +2,41 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../data/course_repository.dart';
+import '../data/onedrive_config.dart';
+import '../data/onedrive_course_repository.dart';
+import '../data/scorm_file_source.dart';
 import '../models/course.dart';
 import '../utils/log.dart';
 
 part 'courses_state.dart';
 
 class CoursesCubit extends Cubit<CoursesState> {
-  CoursesCubit({CourseRepository? repository})
-      : _repo = repository ?? CourseRepository(),
+  CoursesCubit({CourseRepository? repository, String? accessToken})
+      : _repo = repository ?? _defaultRepo(accessToken),
         super(const CoursesState(courses: [], isLoading: true));
 
   final CourseRepository _repo;
+
+  /// Reads courses from the shared OneDrive folder when one is configured and
+  /// we have an access token to authorize Graph; otherwise falls back to the
+  /// local `assets/courses/` folder.
+  static CourseRepository _defaultRepo(String? accessToken) {
+    if (OneDriveConfig.isConfigured &&
+        accessToken != null &&
+        accessToken.isNotEmpty) {
+      logCubit('Using OneDrive course repository');
+      return OneDriveCourseRepository(
+        accessToken: accessToken,
+        shareUrl: OneDriveConfig.shareUrl,
+      );
+    }
+    logCubit('Using local disk course repository');
+    return DiskCourseRepository();
+  }
+
+  /// The file source a [ScormPlayer] uses to play [course] — disk or OneDrive,
+  /// matching whichever repository discovered the course.
+  ScormFileSource sourceFor(Course course) => _repo.sourceFor(course);
 
   /// Scans the courses folder on disk and rebuilds the course list. Safe to
   /// call again to pick up newly dropped-in course folders.

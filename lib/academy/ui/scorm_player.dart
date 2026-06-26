@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart';
 
 import '../data/scorm_asset_server.dart';
+import '../data/scorm_file_source.dart';
 import '../scorm/scorm_adapter.dart';
 import '../utils/log.dart';
 
@@ -12,13 +13,13 @@ import '../utils/log.dart';
 class ScormPlayer extends StatefulWidget {
   const ScormPlayer({
     super.key,
-    required this.dir,
+    required this.source,
     required this.launchFile,
     required this.onSetValue,
   });
 
-  /// Absolute filesystem path to the course folder.
-  final String dir;
+  /// Where the course's files are read from (local disk or OneDrive).
+  final ScormFileSource source;
   final String launchFile;
 
   /// Called for every `cmi.*` value the package writes. The cubit decides what
@@ -44,11 +45,11 @@ class _ScormPlayerState extends State<ScormPlayer> {
 
   Future<void> _init() async {
     try {
-      logScorm('Initializing player for "${widget.dir}/${widget.launchFile}"');
+      logScorm('Initializing player for "${widget.launchFile}"');
 
       // 1. Serve the package over loopback HTTP.
       final server = ScormAssetServer(
-        rootDir: widget.dir,
+        source: widget.source,
         launchFile: widget.launchFile,
       );
       _runningServer = server;

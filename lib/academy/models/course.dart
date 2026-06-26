@@ -26,7 +26,7 @@ class Course extends Equatable {
   const Course({
     required this.id,
     required this.title,
-    required this.dir,
+    required this.basePath,
     required this.launchFile,
     this.status = CourseStatus.notStarted,
   });
@@ -34,11 +34,13 @@ class Course extends Equatable {
   final String id;
   final String title;
 
-  /// Absolute filesystem path to the course folder on disk, e.g.
-  /// `D:/mini projects/academy_platform/assets/courses/golf`.
-  final String dir;
+  /// The course folder's base location, interpreted by the [CourseRepository]
+  /// that produced it: an absolute filesystem path for a local course (e.g.
+  /// `D:/.../assets/courses/golf`), or the folder's path within the shared
+  /// OneDrive folder for a remote course (e.g. `golf`).
+  final String basePath;
 
-  /// Launch document relative to [dir], e.g. `shared/launchpage.html`.
+  /// Launch document relative to [basePath], e.g. `shared/launchpage.html`.
   final String launchFile;
 
   final CourseStatus status;
@@ -50,12 +52,12 @@ class Course extends Equatable {
     return Course(
       id: id,
       title: title,
-      dir: dir,
+      basePath: basePath,
       launchFile: launchFile,
       status: status ?? this.status,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, dir, launchFile, status];
+  List<Object?> get props => [id, title, basePath, launchFile, status];
 }

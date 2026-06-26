@@ -262,7 +262,7 @@ class _ContentArea extends StatelessWidget {
               child: ScormPlayer(
                 // Key by course so switching courses rebuilds the player.
                 key: ValueKey(course.id),
-                dir: course.dir,
+                source: context.read<CoursesCubit>().sourceFor(course),
                 launchFile: course.launchFile,
                 onSetValue: (key, value) =>
                     context.read<CoursesCubit>().onScormSetValue(key, value),

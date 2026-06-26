@@ -1,9 +1,22 @@
 import 'dart:io';
 
-import 'package:xml/xml.dart';
-
 import '../models/course.dart';
 import '../utils/log.dart';
+import 'manifest_parser.dart';
+import 'scorm_file_source.dart';
+
+/// Discovers SCORM courses and knows how to read each one's files.
+///
+/// Implementations: [DiskCourseRepository] (local `assets/courses/`) and
+/// `OneDriveCourseRepository` (a shared OneDrive folder). The cubit picks one
+/// based on whether OneDrive is configured.
+abstract class CourseRepository {
+  /// Finds the available courses (each must expose an `imsmanifest.xml`).
+  Future<List<Course>> loadCourses();
+
+  /// Builds the file source a [ScormAssetServer] uses to play [course].
+  ScormFileSource sourceFor(Course course);
+}
 
 /// Discovers SCORM courses by scanning a folder on disk. Each immediate
 /// subfolder that contains an `imsmanifest.xml` becomes one [Course].
@@ -11,13 +24,14 @@ import '../utils/log.dart';
 /// Drop a new SCORM package folder under `assets/courses/` and it shows up on
 /// the next scan/restart — no rebuild and no `pubspec.yaml` edits, because we
 /// read from the filesystem rather than the (build-time) Flutter asset bundle.
-class CourseRepository {
-  CourseRepository({String? coursesDir}) : _overrideDir = coursesDir;
+class DiskCourseRepository implements CourseRepository {
+  DiskCourseRepository({String? coursesDir}) : _overrideDir = coursesDir;
 
   /// Optional explicit courses directory; when null the repo searches the
   /// candidate locations in [_candidateDirs].
   final String? _overrideDir;
 
+  @override
   Future<List<Course>> loadCourses() async {
     final dir = _resolveCoursesDir();
     if (dir == null) {
@@ -40,7 +54,7 @@ class CourseRepository {
         continue;
       }
       try {
-        final info = _parseManifest(
+        final info = parseManifest(
           manifest.readAsStringSync(),
           fallbackTitle: id,
         );
@@ -52,7 +66,7 @@ class CourseRepository {
           Course(
             id: id,
             title: info.title,
-            dir: sub.path,
+            basePath: sub.path,
             launchFile: info.launchFile,
           ),
         );
@@ -63,6 +77,9 @@ class CourseRepository {
     }
     return courses;
   }
+
+  @override
+  ScormFileSource sourceFor(Course course) => DiskScormSource(course.basePath);
 
   Directory? _resolveCoursesDir() {
     for (final path in _candidateDirs()) {
@@ -93,104 +110,4 @@ class CourseRepository {
         path.split(RegExp(r'[\\/]+')).where((s) => s.isNotEmpty).toList();
     return parts.isEmpty ? path : parts.last;
   }
-}
-
-class _ManifestInfo {
-  _ManifestInfo(this.title, this.launchFile);
-  final String title;
-  final String launchFile;
-}
-
-/// Pulls the course title and launch document out of an `imsmanifest.xml`.
-///
-/// Resolution: default `<organization>` → its first `<item identifierref>` →
-/// the `<resource href>` it points at. Falls back to the first SCO resource,
-/// then the first resource with any `href`.
-_ManifestInfo? _parseManifest(String content, {required String fallbackTitle}) {
-  var xmlStr = content;
-  // Some authoring tools emit a UTF-8 BOM, which trips up XmlDocument.parse.
-  if (xmlStr.isNotEmpty && xmlStr.codeUnitAt(0) == 0xFEFF) {
-    xmlStr = xmlStr.substring(1);
-  }
-  final doc = XmlDocument.parse(xmlStr);
-
-  // Resource identifier -> href, remembering useful fallbacks along the way.
-  final resourceHref = <String, String>{};
-  String? firstScoHref;
-  String? firstAnyHref;
-  for (final r in doc.findAllElements('resource')) {
-    final href = r.getAttribute('href');
-    if (href == null || href.isEmpty) continue;
-    firstAnyHref ??= href;
-    final id = r.getAttribute('identifier');
-    if (id != null) resourceHref[id] = href;
-    final type = (r.getAttribute('adlcp:scormtype') ??
-            r.getAttribute('scormtype') ??
-            '')
-        .toLowerCase();
-    if (firstScoHref == null && type == 'sco') firstScoHref = href;
-  }
-
-  // Default organization (or the first one present).
-  String? defaultOrg;
-  for (final orgs in doc.findAllElements('organizations')) {
-    defaultOrg = orgs.getAttribute('default');
-    break;
-  }
-  final allOrgs = doc.findAllElements('organization').toList();
-  XmlElement? org;
-  if (defaultOrg != null) {
-    for (final o in allOrgs) {
-      if (o.getAttribute('identifier') == defaultOrg) {
-        org = o;
-        break;
-      }
-    }
-  }
-  if (org == null && allOrgs.isNotEmpty) org = allOrgs.first;
-
-  // Launch file: first item's identifierref resolved against the resources.
-  String? launch;
-  if (org != null) {
-    for (final item in org.findAllElements('item')) {
-      final ref = item.getAttribute('identifierref');
-      if (ref != null && resourceHref.containsKey(ref)) {
-        launch = resourceHref[ref];
-        break;
-      }
-    }
-  }
-  launch ??= firstScoHref ?? firstAnyHref;
-  if (launch == null) return null;
-  launch = _normalizeLaunch(launch);
-
-  // Title: organization <title>, else any LOM <langstring>, else folder name.
-  String title = '';
-  if (org != null) {
-    for (final t in org.findElements('title')) {
-      title = t.innerText.trim();
-      break;
-    }
-  }
-  if (title.isEmpty) {
-    for (final ls in doc.findAllElements('langstring')) {
-      final v = ls.innerText.trim();
-      if (v.isNotEmpty) {
-        title = v;
-        break;
-      }
-    }
-  }
-  if (title.isEmpty) title = fallbackTitle;
-
-  return _ManifestInfo(title, launch);
-}
-
-String _normalizeLaunch(String href) {
-  var h = href.replaceAll('\\', '/').trim();
-  while (h.startsWith('./')) {
-    h = h.substring(2);
-  }
-  if (h.startsWith('/')) h = h.substring(1);
-  return h;
 }
