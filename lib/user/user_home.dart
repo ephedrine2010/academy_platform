@@ -1,53 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../auth/cubit/auth_cubit.dart';
-import '../theme/app_theme.dart';
+import '../ui/screens/user_shell.dart';
+import 'cubit/home_cubit.dart';
 
-/// Home screen for a plain trainee (no `admins` doc). Placeholder for now —
-/// the trainee's courses / sessions / attendance UI goes here next.
+/// Home experience for a plain trainee (no `admins` doc). Provides the
+/// [HomeCubit] and hosts the trainee [UserShell] — Home / Courses / Schedule /
+/// Profile — built against the Nahdi Academy design system
+/// (see `assets/design/DESIGN_SYSTEM.md`). Responsive across phone, tablet and
+/// Windows/desktop widths.
 class UserHome extends StatelessWidget {
   const UserHome({super.key});
+
+  // Region / role aren't in the auth token yet; placeholder until the trainee
+  // profile lands in Firestore.
+  static const String _region = 'Eastern Region';
+  static const String _role = 'Pharmacist';
 
   @override
   Widget build(BuildContext context) {
     final user = context.select((AuthCubit c) => c.state.user);
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.tealDark,
-        foregroundColor: Colors.white,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset('assets/brand/logo/logo-white.png', height: 32),
-            const SizedBox(width: 12),
-            const Text('Academy'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(TablerIcons.logout),
-            onPressed: () => context.read<AuthCubit>().signOut(),
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(TablerIcons.school, size: 48, color: AppColors.tealDark),
-            const SizedBox(height: 16),
-            Text(
-              'Welcome${user?.name != null ? ', ${user!.name}' : ''}',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            const Text('Your courses will appear here.'),
-          ],
-        ),
+    final name = _firstName(user?.name);
+    return BlocProvider(
+      create: (_) => HomeCubit(name: name, region: _region, role: _role),
+      child: UserShell(
+        name: name,
+        email: (user?.email.isNotEmpty ?? false) ? user!.email : 'sara.k@nahdi.sa',
+        region: _region,
+        role: _role,
+        onSignOut: () => context.read<AuthCubit>().signOut(),
       ),
     );
+  }
+
+  /// Greeting uses just the first name; falls back to a friendly default when
+  /// the token carries no display name.
+  static String _firstName(String? name) {
+    if (name == null || name.trim().isEmpty) return 'there';
+    return name.trim().split(RegExp(r'\s+')).first;
   }
 }

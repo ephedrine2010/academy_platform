@@ -18,6 +18,12 @@ class AppColors {
 
   // Body text.
   static const Color ink = Color(0xFF111E20);
+  static const Color muted = Color(0xFF9AA39F); // meta / caption text
+  static const Color hairline = Color(0xFFECE7DE); // 1px card border
+  static const Color track = Color(0xFFEDEAE3); // progress track
+  static const Color chipBg = Color(0xFFF3F1EB); // neutral chip / inactive tab
+  static const Color tealMist = Color(0xFFE3EFEC); // pale teal tile fill
+  static const Color tealCaption = Color(0xFF7FC9C2); // caption on dark teal
 
   // Mosaic accents — sampled from the cap.
   static const Color red = Color(0xFFE02234);
@@ -47,6 +53,27 @@ class AppColors {
     final hash = key.codeUnits.fold<int>(0, (a, c) => a + c);
     return accents[hash % accents.length];
   }
+}
+
+/// Foreground / background colour pair for a status badge, sampled from the
+/// mosaic palette per the Nahdi Academy design system.
+class StatusColors {
+  const StatusColors(this.fg, this.bg);
+  final Color fg;
+  final Color bg;
+
+  static const StatusColors enrolled =
+      StatusColors(Color(0xFF2FA84F), Color(0xFFE2F0E5));
+  static const StatusColors inProgress =
+      StatusColors(AppColors.teal, AppColors.tealMist);
+  static const StatusColors dueSoon =
+      StatusColors(Color(0xFFF0612F), Color(0xFFFCEBDD));
+  static const StatusColors overdue =
+      StatusColors(Color(0xFFE02234), Color(0xFFFBE9EC));
+  static const StatusColors completed =
+      StatusColors(Color(0xFF6A746F), Color(0xFFF3F1EB));
+  static const StatusColors certificate =
+      StatusColors(AppColors.lime, AppColors.teal);
 }
 
 /// Builds the app's light theme around the Nahdi Academy teal identity.

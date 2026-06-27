@@ -14,6 +14,7 @@ milestone by milestone.
 - Kickoff requirements for the platform: [documentation/academy_firstmeet.md](documentation/academy_firstmeet.md)
 - How the SCORM player POC is built: [documentation/scormPocImplementation.md](documentation/scormPocImplementation.md)
 - **Milestone 1 (auth + role shell + admin Regions/Contractors):** [documentation/foundationAdminImplementation.md](documentation/foundationAdminImplementation.md)
+- **Trainee UI (design system + Home/Courses/Schedule/Profile):** [documentation/ui_design/trainee_ui.md](documentation/ui_design/trainee_ui.md)
 
 **Read the relevant docs before making non-trivial changes.**
 
