@@ -36,7 +36,9 @@
       "Bash(cd ~/AppData/Local/Pub/Cache/hosted/pub.dev/material_table_view-5.5.1; grep -n \"const TableColumn\\\\|this\\\\.\\\\|required this\" lib/src/table_column.dart | head -40; echo \"===headerHeight/footerHeight===\"; grep -n \"headerHeight\\\\|footerHeight\" lib/src/table_view.dart | head)",
       "PowerShell(Get-PSDrive -PSProvider FileSystem | Select-Object Name, @{N='UsedGB';E={[math]::Round\\($_.Used/1GB,1\\)}}, @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,1\\)}} | Format-Table -AutoSize; \"build dir size:\"; if \\(Test-Path 'D:\\\\mini projects\\\\academy_platform\\\\build'\\) { '{0:N1} GB' -f \\(\\(Get-ChildItem 'D:\\\\mini projects\\\\academy_platform\\\\build' -Recurse -ErrorAction SilentlyContinue | Measure-Object Length -Sum\\).Sum/1GB\\) })",
       "PowerShell(flutter clean; if \\($?\\) { Get-PSDrive D | Select-Object @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,1\\)}} })",
-      "PowerShell(flutter run -d chrome)"
+      "PowerShell(flutter run -d chrome)",
+      "Bash(mkdir -p lib/courses_old/academy)",
+      "Bash(git mv *)"
     ]
   }
 }

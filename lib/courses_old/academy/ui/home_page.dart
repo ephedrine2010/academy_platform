@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../auth/cubit/auth_cubit.dart';
+import '../../../auth/cubit/auth_cubit.dart';
 import '../cubit/courses_cubit.dart';
 import '../models/course.dart';
 import 'scorm_player.dart';

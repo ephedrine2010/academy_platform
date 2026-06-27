@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../auth/cubit/auth_cubit.dart';
+import '../courses/cubit/courses_cubit.dart';
 import '../ui/screens/user_shell.dart';
 import 'cubit/home_cubit.dart';
 
@@ -22,8 +23,14 @@ class UserHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.select((AuthCubit c) => c.state.user);
     final name = _firstName(user?.name);
-    return BlocProvider(
-      create: (_) => HomeCubit(name: name, region: _region, role: _role),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => HomeCubit(name: name, region: _region, role: _role),
+        ),
+        // Live course list from Firestore, shared by Home / Courses / Schedule.
+        BlocProvider(create: (_) => CoursesCubit()),
+      ],
       child: UserShell(
         name: name,
         email: (user?.email.isNotEmpty ?? false) ? user!.email : 'sara.k@nahdi.sa',

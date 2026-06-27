@@ -1,5 +1,5 @@
 import '../models/course.dart';
-import '../utils/log.dart';
+import '../../../academy/utils/log.dart';
 import 'course_repository.dart';
 import 'manifest_parser.dart';
 import 'onedrive_graph_client.dart';

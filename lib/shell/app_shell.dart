@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
-import '../academy/cubit/courses_cubit.dart';
-import '../academy/ui/home_page.dart';
 import '../admin/cubit/regions_cubit.dart';
 import '../admin/cubit/trainers_cubit.dart';
 import '../admin/ui/admin_dashboard_page.dart';
 import '../admin/ui/regions_page.dart';
 import '../admin/ui/trainers_page.dart';
 import '../auth/cubit/auth_cubit.dart';
+import '../courses/cubit/courses_cubit.dart';
+import '../courses/ui/admin_courses_page.dart';
 import '../theme/app_theme.dart';
 
 /// One entry in the left navigation.
@@ -25,7 +25,7 @@ class _Tab {
 /// layouts, a Drawer on narrow ones) plus the selected tab's content. The tab
 /// set depends on the signed-in role.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.role, this.accessToken});
+  const AppShell({super.key, required this.role});
 
   /// The signed-in user's role. Determines which tabs show: a [AppRole.manager]
   /// sees Dashboard/Regions/Trainers/Courses; a [AppRole.trainer] sees only
@@ -33,10 +33,6 @@ class AppShell extends StatefulWidget {
   final AppRole role;
 
   bool get _isManager => role == AppRole.manager;
-
-  /// OneDrive Graph access token, forwarded to the Courses tab so it can stream
-  /// SCORM packages from the shared OneDrive folder when configured.
-  final String? accessToken;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -67,9 +63,8 @@ class _AppShellState extends State<AppShell> {
           label: 'Courses',
           icon: TablerIcons.book,
           builder: (_) => BlocProvider(
-            create: (_) =>
-                CoursesCubit(accessToken: widget.accessToken)..loadCourses(),
-            child: const HomePage(),
+            create: (_) => CoursesCubit(),
+            child: const AdminCoursesPage(),
           ),
         ),
       ];

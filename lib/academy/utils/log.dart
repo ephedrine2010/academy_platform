@@ -10,6 +10,8 @@ void logCubit(String message) => debugPrint('[CUBIT]    $message');
 
 void logAuth(String message) => debugPrint('[AUTH]     $message');
 
+void logCourse(String message) => debugPrint('[COURSE]   $message');
+
 void logError(String where, Object error, [StackTrace? stack]) {
   debugPrint('[ERROR]    $where: $error');
   if (stack != null) debugPrint(stack.toString());

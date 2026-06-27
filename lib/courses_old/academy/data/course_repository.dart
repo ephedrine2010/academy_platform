@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import '../models/course.dart';
-import '../utils/log.dart';
+import '../../../academy/utils/log.dart';
 import 'manifest_parser.dart';
 import 'scorm_file_source.dart';
 

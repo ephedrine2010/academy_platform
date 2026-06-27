@@ -6,7 +6,7 @@ import '../data/onedrive_config.dart';
 import '../data/onedrive_course_repository.dart';
 import '../data/scorm_file_source.dart';
 import '../models/course.dart';
-import '../utils/log.dart';
+import '../../../academy/utils/log.dart';
 
 part 'courses_state.dart';
 

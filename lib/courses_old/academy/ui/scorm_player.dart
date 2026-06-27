@@ -6,7 +6,7 @@ import 'package:webview_windows/webview_windows.dart';
 import '../data/scorm_asset_server.dart';
 import '../data/scorm_file_source.dart';
 import '../scorm/scorm_adapter.dart';
-import '../utils/log.dart';
+import '../../../academy/utils/log.dart';
 
 /// Hosts a single SCORM package inside a WebView2 surface and reports SCORM
 /// `LMSSetValue` events back to the caller.

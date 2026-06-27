@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../courses/ui/courses_list_body.dart';
 import '../../theme/app_theme.dart';
-import '../models/learning.dart';
 import '../responsive.dart';
-import '../widgets/cards.dart';
 import '../widgets/teal_header.dart';
-import 'course_detail_screen.dart';
 
-/// Upcoming sessions, webinars and due assessments for the trainee.
+/// Upcoming sessions for the trainee. For now this shows every course from the
+/// Firestore `courses` collection; once appointments and per-trainee
+/// assignment are modelled it will narrow to the trainee's scheduled sessions.
 class ScheduleScreen extends StatelessWidget {
   const ScheduleScreen({super.key});
 
@@ -38,29 +38,26 @@ class ScheduleScreen extends StatelessWidget {
             Expanded(
               child: ContentColumn(
                 maxWidth: maxW,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Upcoming',
-                      style: GoogleFonts.bricolageGrotesque(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    for (final course in DemoData.schedule) ...[
-                      CourseListItem(
-                        course: course,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => CourseDetailScreen(course: course),
-                          ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+                      child: Text(
+                        'Upcoming',
+                        style: GoogleFonts.bricolageGrotesque(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
                         ),
                       ),
-                      const SizedBox(height: 11),
-                    ],
+                    ),
+                    const Expanded(
+                      child: CoursesListBody(
+                        padding: EdgeInsets.fromLTRB(18, 10, 18, 24),
+                        emptyText: 'Nothing scheduled yet.',
+                      ),
+                    ),
                   ],
                 ),
               ),

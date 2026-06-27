@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../utils/log.dart';
+import '../../../academy/utils/log.dart';
 import 'scorm_file_source.dart';
 
 /// Serves a SCORM package over a local loopback HTTP server, reading each file

@@ -18,10 +18,7 @@ class AuthGate extends StatelessWidget {
       builder: (context, state) {
         if (!state.isSignedIn) return const LoginPage();
         if (state.isTrainee) return const UserHome();
-        return AppShell(
-          role: state.role,
-          accessToken: state.user?.accessToken,
-        );
+        return AppShell(role: state.role);
       },
     );
   }

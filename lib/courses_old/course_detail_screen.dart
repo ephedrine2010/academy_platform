@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
-import '../models/learning.dart';
-import '../responsive.dart';
-import '../widgets/badges.dart';
-import '../widgets/brand.dart';
-import '../widgets/buttons.dart';
-import '../widgets/progress.dart';
-import '../widgets/teal_header.dart';
+import '../theme/app_theme.dart';
+import '../ui/models/learning.dart';
+import '../ui/responsive.dart';
+import '../ui/widgets/badges.dart';
+import '../ui/widgets/brand.dart';
+import '../ui/widgets/buttons.dart';
+import '../ui/widgets/progress.dart';
+import '../ui/widgets/teal_header.dart';
 
 /// Full course view — teal header with title + status, a progress panel and the
 /// module list.
