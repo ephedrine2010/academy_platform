@@ -11,9 +11,14 @@ class Appointment extends Equatable {
     required this.dateTime,
     required this.enrolledTrainerIds,
     required this.location,
+    this.appointmentId,
   });
 
   final String id;
+
+  /// Stable 10-digit numeric id (the `appointment_id` field). Null for legacy
+  /// appointments created before ids existed.
+  final int? appointmentId;
 
   /// Display string for the `date` field — formatted when it's a Firestore
   /// [Timestamp], otherwise the raw value.
@@ -36,6 +41,7 @@ class Appointment extends Equatable {
       dateTime: rawDate is Timestamp ? rawDate.toDate() : null,
       enrolledTrainerIds: _intList(data['enrolled_trainer']),
       location: (data['location'] ?? '').toString(),
+      appointmentId: (data['appointment_id'] as num?)?.toInt(),
     );
   }
 
@@ -58,5 +64,6 @@ class Appointment extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, date, dateTime, enrolledTrainerIds, location];
+  List<Object?> get props =>
+      [id, date, dateTime, enrolledTrainerIds, location, appointmentId];
 }

@@ -1,85 +1,78 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
-/// One session of a course. Sessions are stored as **fields** on the course
-/// document — the field *name* (the [key], e.g. `session1-Health360`) carries
-/// an ordering prefix, and the field *value* is its [description] (e.g.
-/// `about medicine`).
-///
-/// The sub-collection that holds the session's appointments + `assigned_trainer`
-/// doc is named after the key **with the `sessionN-` prefix stripped** ([name],
-/// e.g. `Health360`) — see [CourseRepository.loadSession].
+/// One session of a course. Sessions are stored as **documents** in the course's
+/// `sessions` sub-collection (`courses/{courseId}/sessions/{id}`). The document
+/// id is the session [name]; that session's appointments + `assigned_trainer`
+/// doc live in a nested `appointments` sub-collection (see
+/// [CourseRepository.loadSession]).
 class CourseSession extends Equatable {
   const CourseSession({
-    required this.key,
+    required this.id,
     required this.name,
     required this.description,
+    this.sessionId,
+    this.order = 0,
   });
 
-  /// Raw field name on the course doc, e.g. `session1-Health360`. Used for
-  /// ordering.
-  final String key;
+  /// Firestore document id within the `sessions` sub-collection (== [name]).
+  final String id;
 
-  /// Sub-collection / display name, e.g. `Health360` (the [key] with any
-  /// leading `sessionN-` prefix removed).
+  /// Display name, e.g. `Health360`.
   final String name;
   final String description;
 
-  static final _orderPrefix = RegExp(r'^session\d+-', caseSensitive: false);
+  /// Stable 10-digit numeric id (the `session_id` field). Null for legacy docs.
+  final int? sessionId;
 
-  factory CourseSession.fromField(String key, Object? value) {
+  /// 1-based ordering position (the `order` field) used to sort the list.
+  final int order;
+
+  factory CourseSession.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? const {};
     return CourseSession(
-      key: key,
-      name: key.replaceFirst(_orderPrefix, ''),
-      description: '${value ?? ''}',
+      id: doc.id,
+      name: (data['name'] ?? doc.id).toString(),
+      description: (data['description'] ?? '').toString(),
+      sessionId: (data['session_id'] as num?)?.toInt(),
+      order: (data['order'] as num?)?.toInt() ?? 0,
     );
   }
 
   @override
-  List<Object?> get props => [key, name, description];
+  List<Object?> get props => [id, name, description, sessionId, order];
 }
 
 /// A course loaded from the Firestore `courses` collection.
 ///
 /// Each document is one course; its **document id is the course title key**
 /// (e.g. `care360`). A `title` field is used as the display name when present,
-/// otherwise the document id is shown. Every *other* top-level field is treated
-/// as a [CourseSession] (field name → session, field value → description).
+/// otherwise the document id is shown. This course's sessions live in a
+/// `sessions` sub-collection that is loaded on demand — see
+/// [CourseRepository.loadSessions] — so they are **not** part of this model.
 class Course extends Equatable {
-  const Course({required this.id, required this.title, this.sessions = const []});
-
-  /// Reserved field names that are course metadata, not sessions.
-  static const _reservedKeys = {'title'};
+  const Course({required this.id, required this.title, this.courseId});
 
   /// Firestore document id (the course title key, e.g. `care360`).
   final String id;
 
+  /// Stable 10-digit numeric id (the `course_id` field). Null for legacy
+  /// courses created before ids existed.
+  final int? courseId;
+
   /// Display title — the `title` field, falling back to [id].
   final String title;
-
-  /// This course's sessions, derived from the document's non-reserved fields.
-  final List<CourseSession> sessions;
 
   factory Course.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const {};
     final title = (data['title'] ?? '') as String;
-
-    final sessions = <CourseSession>[];
-    for (final entry in data.entries) {
-      if (_reservedKeys.contains(entry.key)) continue;
-      sessions.add(CourseSession.fromField(entry.key, entry.value));
-    }
-    // Field order isn't guaranteed; sort by the raw key so `session1…`
-    // precedes `session2…`.
-    sessions.sort((a, b) => a.key.compareTo(b.key));
-
     return Course(
       id: doc.id,
+      courseId: (data['course_id'] as num?)?.toInt(),
       title: title.trim().isNotEmpty ? title : doc.id,
-      sessions: sessions,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, sessions];
+  List<Object?> get props => [id, courseId, title];
 }

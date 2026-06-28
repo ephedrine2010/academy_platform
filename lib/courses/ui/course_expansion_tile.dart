@@ -12,10 +12,10 @@ import '../models/course.dart';
 import '../models/session_detail.dart';
 import 'course_admin_dialogs.dart';
 
-/// A course row that expands to reveal its sessions; each session in turn
-/// expands to show that session's appointments. Assigned trainers are shown
-/// under a session only when [isAdmin] is true.
-class CourseExpansionTile extends StatelessWidget {
+/// A course row that expands to lazily load and reveal its sessions; each
+/// session in turn expands to load that session's appointments. Assigned
+/// trainers are shown under a session only when [isAdmin] is true.
+class CourseExpansionTile extends StatefulWidget {
   const CourseExpansionTile({
     super.key,
     required this.course,
@@ -25,44 +25,68 @@ class CourseExpansionTile extends StatelessWidget {
   final Course course;
   final bool isAdmin;
 
-  Future<void> _addSession(BuildContext context) async {
-    final result = await showAddSessionDialog(context);
-    if (result == null || !context.mounted) return;
-    await context.read<CoursesCubit>().addSession(
-          course.id,
-          name: result.name,
-          description: result.description,
-          order: course.sessions.length + 1,
-        );
+  @override
+  State<CourseExpansionTile> createState() => _CourseExpansionTileState();
+}
+
+class _CourseExpansionTileState extends State<CourseExpansionTile> {
+  Future<List<CourseSession>>? _future;
+
+  Course get _course => widget.course;
+
+  void _onExpansion(bool open) {
+    if (open) {
+      logCourse(
+        'course selected → "${_course.id}" (title="${_course.title}", '
+        'course_id=${_course.courseId})',
+      );
+    }
+    if (open && _future == null) _load();
   }
 
-  Future<void> _editCourse(BuildContext context) async {
+  void _load() {
+    setState(() {
+      _future = context.read<CoursesCubit>().loadSessions(_course.id);
+    });
+  }
+
+  Future<void> _addSession(int existingCount) async {
+    final result = await showAddSessionDialog(context);
+    if (result == null || !mounted) return;
+    await context.read<CoursesCubit>().add_Session(
+      _course.id,
+      name: result.name,
+      description: result.description,
+      order: existingCount + 1,
+    );
+    _load();
+  }
+
+  Future<void> _editCourse() async {
     final title = await promptForText(
       context,
       title: 'Edit course',
       label: 'Course title',
-      initial: course.title,
+      initial: _course.title,
     );
-    if (title == null || title.isEmpty || !context.mounted) return;
-    await context.read<CoursesCubit>().editCourse(course.id, title: title);
+    if (title == null || title.isEmpty || !mounted) return;
+    await context.read<CoursesCubit>().editCourse(_course.id, title: title);
   }
 
-  Future<void> _deleteCourse(BuildContext context) async {
+  Future<void> _deleteCourse() async {
     final ok = await confirmDelete(
       context,
-      message: 'Delete course “${course.title}”?\n'
-          'This also removes its ${course.sessions.length} session(s) and all '
-          'their appointments.',
+      message:
+          'Delete course “${_course.title}”?\n'
+          'This also removes all its sessions and their appointments.',
     );
-    if (!ok || !context.mounted) return;
-    await context
-        .read<CoursesCubit>()
-        .deleteCourse(course.id, [for (final s in course.sessions) s.name]);
+    if (!ok || !mounted) return;
+    await context.read<CoursesCubit>().deleteCourse(_course.id);
   }
 
   @override
   Widget build(BuildContext context) {
-    final accent = AppColors.accentFor(course.title);
+    final accent = AppColors.accentFor(_course.title);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -78,67 +102,98 @@ class CourseExpansionTile extends StatelessWidget {
             child: Icon(TablerIcons.book, color: accent, size: 20),
           ),
           title: Text(
-            course.title,
+            _course.title,
             style: GoogleFonts.manrope(
               fontSize: 13.5,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
             ),
           ),
-          subtitle: Text(
-            course.sessions.isEmpty
-                ? 'No sessions'
-                : '${course.sessions.length} session(s)',
-            style: GoogleFonts.manrope(fontSize: 10.5, color: AppColors.muted),
-          ),
-          onExpansionChanged: (open) {
-            if (open) {
-              logCourse(
-                'course selected → "${course.id}" (title="${course.title}"), '
-                'sessions(${course.sessions.length})='
-                '${course.sessions.map((s) => s.name).toList()}',
-              );
-            }
-          },
+          subtitle: widget.isAdmin && _course.courseId != null
+              ? Text(
+                  'ID ${_course.courseId}',
+                  style: GoogleFonts.manrope(
+                    fontSize: 10.5,
+                    color: AppColors.muted,
+                  ),
+                )
+              : null,
+          onExpansionChanged: _onExpansion,
           childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
           children: [
-            if (course.sessions.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('No sessions for this course yet.'),
-              )
+            if (_future == null)
+              const SizedBox.shrink()
             else
-              for (final session in course.sessions)
-                _SessionTile(
-                  courseId: course.id,
-                  session: session,
-                  isAdmin: isAdmin,
-                ),
-            if (isAdmin)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: [
-                    _ActionButton(
-                      icon: TablerIcons.plus,
-                      label: 'Add session',
-                      onPressed: () => _addSession(context),
-                    ),
-                    _ActionButton(
-                      icon: TablerIcons.pencil,
-                      label: 'Edit course',
-                      onPressed: () => _editCourse(context),
-                    ),
-                    _ActionButton(
-                      icon: TablerIcons.trash,
-                      label: 'Delete course',
-                      danger: true,
-                      onPressed: () => _deleteCourse(context),
-                    ),
-                  ],
-                ),
+              FutureBuilder<List<CourseSession>>(
+                future: _future,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    );
+                  }
+                  if (snap.hasError) {
+                    return Text(
+                      'Could not load sessions:\n${snap.error}',
+                      style: GoogleFonts.manrope(
+                        fontSize: 11,
+                        color: AppColors.red,
+                      ),
+                    );
+                  }
+                  final sessions = snap.data ?? const <CourseSession>[];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (sessions.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Text('No sessions for this course yet.'),
+                        )
+                      else
+                        for (final session in sessions)
+                          _SessionTile(
+                            courseId: _course.id,
+                            session: session,
+                            isAdmin: widget.isAdmin,
+                            onSessionsChanged: _load,
+                          ),
+                      if (widget.isAdmin)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: [
+                              _ActionButton(
+                                icon: TablerIcons.plus,
+                                label: 'Add session',
+                                onPressed: () => _addSession(sessions.length),
+                              ),
+                              _ActionButton(
+                                icon: TablerIcons.pencil,
+                                label: 'Edit course',
+                                onPressed: _editCourse,
+                              ),
+                              _ActionButton(
+                                icon: TablerIcons.trash,
+                                label: 'Delete course',
+                                danger: true,
+                                onPressed: _deleteCourse,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
           ],
         ),
@@ -154,11 +209,15 @@ class _SessionTile extends StatefulWidget {
     required this.courseId,
     required this.session,
     required this.isAdmin,
+    required this.onSessionsChanged,
   });
 
   final String courseId;
   final CourseSession session;
   final bool isAdmin;
+
+  /// Reloads the parent course's session list (after a session edit/delete).
+  final VoidCallback onSessionsChanged;
 
   @override
   State<_SessionTile> createState() => _SessionTileState();
@@ -170,7 +229,7 @@ class _SessionTileState extends State<_SessionTile> {
   void _onExpansion(bool open) {
     if (open) {
       logCourse(
-        'session selected → "${widget.session.name}" of course '
+        'session selected → "${widget.session.id}" of course '
         '"${widget.courseId}"',
       );
     }
@@ -179,14 +238,22 @@ class _SessionTileState extends State<_SessionTile> {
 
   void _load() {
     setState(() {
-      _future = context
-          .read<CoursesCubit>()
-          .loadSession(widget.courseId, widget.session.name);
+      _future = context.read<CoursesCubit>().loadSession(
+        widget.courseId,
+        widget.session.id,
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final session = widget.session;
+    final subtitle = [
+      if (session.description.isNotEmpty) session.description,
+      if (widget.isAdmin && session.sessionId != null)
+        'ID ${session.sessionId}',
+    ].join(' · ');
+
     return Container(
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
@@ -198,20 +265,23 @@ class _SessionTileState extends State<_SessionTile> {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           dense: true,
-          leading: const Icon(TablerIcons.calendar_event,
-              size: 18, color: AppColors.teal),
+          leading: const Icon(
+            TablerIcons.calendar_event,
+            size: 18,
+            color: AppColors.teal,
+          ),
           title: Text(
-            widget.session.name,
+            session.name,
             style: GoogleFonts.manrope(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
             ),
           ),
-          subtitle: widget.session.description.isEmpty
+          subtitle: subtitle.isEmpty
               ? null
               : Text(
-                  widget.session.description,
+                  subtitle,
                   style: GoogleFonts.manrope(
                     fontSize: 10.5,
                     color: AppColors.muted,
@@ -242,7 +312,9 @@ class _SessionTileState extends State<_SessionTile> {
                     return Text(
                       'Could not load session:\n${snap.error}',
                       style: GoogleFonts.manrope(
-                          fontSize: 11, color: AppColors.red),
+                        fontSize: 11,
+                        color: AppColors.red,
+                      ),
                     );
                   }
                   final detail = snap.data!;
@@ -250,8 +322,9 @@ class _SessionTileState extends State<_SessionTile> {
                     detail: detail,
                     isAdmin: widget.isAdmin,
                     courseId: widget.courseId,
-                    session: widget.session,
-                    onChanged: _load,
+                    session: session,
+                    onAppointmentsChanged: _load,
+                    onSessionsChanged: widget.onSessionsChanged,
                   );
                 },
               ),
@@ -268,26 +341,32 @@ class _SessionBody extends StatelessWidget {
     required this.isAdmin,
     required this.courseId,
     required this.session,
-    required this.onChanged,
+    required this.onAppointmentsChanged,
+    required this.onSessionsChanged,
   });
 
   final SessionDetail detail;
   final bool isAdmin;
   final String courseId;
   final CourseSession session;
-  final VoidCallback onChanged;
+
+  /// Reloads this session's appointments (after an appointment add/edit/delete).
+  final VoidCallback onAppointmentsChanged;
+
+  /// Reloads the parent course's session list (after a session edit/delete).
+  final VoidCallback onSessionsChanged;
 
   Future<void> _addAppointment(BuildContext context) async {
     final result = await showAppointmentDialog(context);
     if (result == null || !context.mounted) return;
     await context.read<CoursesCubit>().addAppointment(
-          courseId,
-          session.name,
-          date: result.date,
-          location: result.location,
-          trainerIds: result.trainerIds,
-        );
-    onChanged();
+      courseId,
+      session.id,
+      date: result.date,
+      location: result.location,
+      trainerIds: result.trainerIds,
+    );
+    onAppointmentsChanged();
   }
 
   Future<void> _editSession(BuildContext context) async {
@@ -298,9 +377,12 @@ class _SessionBody extends StatelessWidget {
       initial: session.description,
     );
     if (desc == null || !context.mounted) return;
-    await context
-        .read<CoursesCubit>()
-        .editSession(courseId, key: session.key, description: desc);
+    await context.read<CoursesCubit>().editSession(
+      courseId,
+      sessionId: session.id,
+      description: desc,
+    );
+    onSessionsChanged();
   }
 
   Future<void> _deleteSession(BuildContext context) async {
@@ -309,9 +391,8 @@ class _SessionBody extends StatelessWidget {
       message: 'Delete session “${session.name}” and its appointments?',
     );
     if (!ok || !context.mounted) return;
-    await context
-        .read<CoursesCubit>()
-        .deleteSession(courseId, key: session.key, sessionName: session.name);
+    await context.read<CoursesCubit>().deleteSession(courseId, session.id);
+    onSessionsChanged();
   }
 
   @override
@@ -332,8 +413,8 @@ class _SessionBody extends StatelessWidget {
               appointment: a,
               isAdmin: isAdmin,
               courseId: courseId,
-              sessionName: session.name,
-              onChanged: onChanged,
+              sessionId: session.id,
+              onChanged: onAppointmentsChanged,
             ),
         if (isAdmin) ...[
           const SizedBox(height: 12),
@@ -391,14 +472,14 @@ class _AppointmentRow extends StatelessWidget {
     required this.appointment,
     required this.isAdmin,
     required this.courseId,
-    required this.sessionName,
+    required this.sessionId,
     required this.onChanged,
   });
 
   final Appointment appointment;
   final bool isAdmin;
   final String courseId;
-  final String sessionName;
+  final String sessionId;
   final VoidCallback onChanged;
 
   Future<void> _edit(BuildContext context) async {
@@ -411,13 +492,13 @@ class _AppointmentRow extends StatelessWidget {
     );
     if (result == null || !context.mounted) return;
     await context.read<CoursesCubit>().editAppointment(
-          courseId,
-          sessionName,
-          appointment.id,
-          date: result.date,
-          location: result.location,
-          trainerIds: result.trainerIds,
-        );
+      courseId,
+      sessionId,
+      appointment.id,
+      date: result.date,
+      location: result.location,
+      trainerIds: result.trainerIds,
+    );
     onChanged();
   }
 
@@ -427,9 +508,11 @@ class _AppointmentRow extends StatelessWidget {
       message: 'Delete appointment “${appointment.id}”?',
     );
     if (!ok || !context.mounted) return;
-    await context
-        .read<CoursesCubit>()
-        .deleteAppointment(courseId, sessionName, appointment.id);
+    await context.read<CoursesCubit>().deleteAppointment(
+      courseId,
+      sessionId,
+      appointment.id,
+    );
     onChanged();
   }
 
@@ -439,6 +522,8 @@ class _AppointmentRow extends StatelessWidget {
       if (appointment.location.isNotEmpty) appointment.location,
       if (appointment.enrolledTrainerIds.isNotEmpty)
         'Trainers: ${appointment.enrolledTrainerIds.join(', ')}',
+      if (isAdmin && appointment.appointmentId != null)
+        'ID ${appointment.appointmentId}',
     ].join(' · ');
 
     return Padding(
@@ -467,7 +552,9 @@ class _AppointmentRow extends StatelessWidget {
                   Text(
                     meta,
                     style: GoogleFonts.manrope(
-                        fontSize: 10.5, color: AppColors.muted),
+                      fontSize: 10.5,
+                      color: AppColors.muted,
+                    ),
                   ),
               ],
             ),
