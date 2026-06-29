@@ -1,20 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
-/// A trainer (regional manager / instructor — the admin02 role). Stored in the
-/// `trainers` collection. [trainerId] is the trainer's company/staff id (free
+/// An instructor (regional manager / instructor — the admin02 role). Stored in
+/// the `admins` collection. [instructorId] is the instructor's company/staff id (free
 /// text, distinct from the Firestore document [id]). [regionNames] is the
 /// single source of truth for the many-to-many region assignment and stores
 /// region **names** directly (e.g. `central`) rather than document ids.
-class Trainer extends Equatable {
-  /// The `admins.role` value that marks a doc as a trainer. Trainers live in the
+class Instructor extends Equatable {
+  /// The `admins.role` value that marks a doc as an instructor. Instructors live in the
   /// `admins` collection alongside managers (`admin01`) and are told apart by
   /// this role.
   static const String role = 'admin02';
 
-  const Trainer({
+  const Instructor({
     required this.id,
-    required this.trainerId,
+    required this.instructorId,
     required this.name,
     required this.email,
     required this.phone,
@@ -23,18 +23,18 @@ class Trainer extends Equatable {
   });
 
   final String id;
-  final String trainerId;
+  final String instructorId;
   final String name;
   final String email;
   final String phone;
   final String address;
   final List<String> regionNames;
 
-  factory Trainer.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory Instructor.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const {};
-    return Trainer(
+    return Instructor(
       id: doc.id,
-      trainerId: (data['trainerId'] ?? '') as String,
+      instructorId: (data['instructorId'] ?? '') as String,
       name: (data['name'] ?? '') as String,
       email: (data['email'] ?? '') as String,
       phone: (data['phone'] ?? '') as String,
@@ -46,7 +46,7 @@ class Trainer extends Equatable {
 
   Map<String, dynamic> toMap() => {
         'role': role,
-        'trainerId': trainerId,
+        'instructorId': instructorId,
         'name': name,
         'email': email,
         'phone': phone,
@@ -54,17 +54,17 @@ class Trainer extends Equatable {
         'regionNames': regionNames,
       };
 
-  Trainer copyWith({
-    String? trainerId,
+  Instructor copyWith({
+    String? instructorId,
     String? name,
     String? email,
     String? phone,
     String? address,
     List<String>? regionNames,
   }) {
-    return Trainer(
+    return Instructor(
       id: id,
-      trainerId: trainerId ?? this.trainerId,
+      instructorId: instructorId ?? this.instructorId,
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
@@ -75,5 +75,5 @@ class Trainer extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, trainerId, name, email, phone, address, regionNames];
+      [id, instructorId, name, email, phone, address, regionNames];
 }

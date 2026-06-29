@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -15,8 +14,9 @@ part 'courses_state.dart';
 /// the repository stream and re-emits whenever the collection changes. Shared by
 /// the admin Courses tab and the trainee Home / Courses / Schedule screens.
 class CoursesCubit extends Cubit<CoursesState> {
-  CoursesCubit({CourseRepository? repository})
-    : _repo = repository ?? CourseRepository(),
+  CoursesCubit({CourseRepository? repository, String? creatorId, String? creatorEmail})
+    : _repo = repository ??
+          CourseRepository(creatorId: creatorId, creatorEmail: creatorEmail),
       super(const CoursesState()) {
     _sub = _repo.watch().listen(
       (list) => emit(state.copyWith(courses: list, loading: false)),
@@ -30,7 +30,7 @@ class CoursesCubit extends Cubit<CoursesState> {
   Future<void> addCourse(String name) => _repo.addCourse(name);
 
   //manually created
-  Future<void> add_Session(
+  /*Future<void> add_Session222(
     int? courseId, {
     required String name,
     required String description,
@@ -54,7 +54,7 @@ class CoursesCubit extends Cubit<CoursesState> {
     logCourse('add_Session → course ref: ${courseRef.path}');
     // ignore: avoid_print
     print(courseRef);
-  }
+  }*/
 
   //-------------------------------------------------------------
 
@@ -66,11 +66,11 @@ class CoursesCubit extends Cubit<CoursesState> {
   Future<List<CourseSession>> loadSessions(String courseId) =>
       _repo.loadSessions(courseId);
 
-  /// Loads a session's appointments + assigned trainer ids on demand (when a
+  /// Loads a session's appointments + assigned instructor ids on demand (when a
   /// session row is expanded). Read-only, so it returns a future rather than
   /// emitting state.
-  Future<SessionDetail> loadSession(String courseId, String sessionId) =>
-      _repo.loadSession(courseId, sessionId);
+  Future<SessionDetail> loadSession(String sessionId) =>
+      _repo.loadSession(sessionId);
 
   // --- Admin writes (gated in the UI by isAdmin) -------------------------
 
@@ -87,17 +87,15 @@ class CoursesCubit extends Cubit<CoursesState> {
   );
 
   Future<void> addAppointment(
-    String courseId,
-    String sessionName, {
+    String sessionId, {
     required DateTime date,
     required String location,
-    required List<int> trainerIds,
+    required List<int> instructorIds,
   }) => _repo.addAppointment(
-    courseId,
-    sessionName,
+    sessionId,
     date: date,
     location: location,
-    trainerIds: trainerIds,
+    instructorIds: instructorIds,
   );
 
   Future<void> editCourse(String courseId, {required String title}) =>
@@ -106,39 +104,29 @@ class CoursesCubit extends Cubit<CoursesState> {
   Future<void> deleteCourse(String courseId) => _repo.deleteCourse(courseId);
 
   Future<void> editSession(
-    String courseId, {
-    required String sessionId,
+    String sessionId, {
     required String description,
-  }) => _repo.editSession(
-    courseId,
-    sessionId: sessionId,
-    description: description,
-  );
+  }) => _repo.editSession(sessionId, description: description);
 
-  Future<void> deleteSession(String courseId, String sessionId) =>
-      _repo.deleteSession(courseId, sessionId);
+  Future<void> deleteSession(String sessionId) =>
+      _repo.deleteSession(sessionId);
 
   Future<void> editAppointment(
-    String courseId,
     String sessionId,
     String appointmentId, {
     required DateTime date,
     required String location,
-    required List<int> trainerIds,
+    required List<int> instructorIds,
   }) => _repo.editAppointment(
-    courseId,
     sessionId,
     appointmentId,
     date: date,
     location: location,
-    trainerIds: trainerIds,
+    instructorIds: instructorIds,
   );
 
-  Future<void> deleteAppointment(
-    String courseId,
-    String sessionId,
-    String appointmentId,
-  ) => _repo.deleteAppointment(courseId, sessionId, appointmentId);
+  Future<void> deleteAppointment(String sessionId, String appointmentId) =>
+      _repo.deleteAppointment(sessionId, appointmentId);
 
   @override
   Future<void> close() {

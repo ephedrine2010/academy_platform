@@ -38,7 +38,17 @@
       "PowerShell(flutter clean; if \\($?\\) { Get-PSDrive D | Select-Object @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,1\\)}} })",
       "PowerShell(flutter run -d chrome)",
       "Bash(mkdir -p lib/courses_old/academy)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "PowerShell(git mv lib/admin/models/trainer.dart lib/admin/models/instructor.dart)",
+      "PowerShell(git mv lib/admin/data/trainer_repository.dart lib/admin/data/instructor_repository.dart)",
+      "PowerShell(git mv lib/admin/cubit/trainers_cubit.dart lib/admin/cubit/instructors_cubit.dart)",
+      "PowerShell(git mv lib/admin/cubit/trainers_state.dart lib/admin/cubit/instructors_state.dart)",
+      "PowerShell(git mv lib/admin/ui/trainers_page.dart lib/admin/ui/instructors_page.dart)",
+      "PowerShell(git mv lib/admin/ui/trainer_edit_dialog.dart lib/admin/ui/instructor_edit_dialog.dart)",
+      "PowerShell(git mv documentation/admin_trainer/admin_trainer_flow.md documentation/admin_trainer/admin_instructor_flow.md)",
+      "PowerShell(git mv documentation/admin_trainer documentation/admin_instructor)",
+      "PowerShell($ErrorActionPreference = 'Stop')",
+      "PowerShell($ErrorActionPreference='Stop')"
     ]
   }
 }

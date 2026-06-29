@@ -1,15 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
-/// One appointment within a session sub-collection, e.g.
-/// `/courses/care360/beauty360/appointment1`. Fields: `date` (Timestamp),
-/// `enrolled_trainer` (int array of trainer ids), `location` (string).
+/// One appointment within a session's nested sub-collection, e.g.
+/// `/sessions/{sessionId}/appointments/appointment1`. Fields: `date` (Timestamp),
+/// `enrolled_instructor` (int array of instructor ids), `location` (string).
 class Appointment extends Equatable {
   const Appointment({
     required this.id,
     required this.date,
     required this.dateTime,
-    required this.enrolledTrainerIds,
+    required this.enrolledInstructorIds,
     required this.location,
     this.appointmentId,
   });
@@ -28,8 +28,8 @@ class Appointment extends Equatable {
   /// edit dialog); null otherwise.
   final DateTime? dateTime;
 
-  /// Trainer ids enrolled for this appointment (the `enrolled_trainer` array).
-  final List<int> enrolledTrainerIds;
+  /// Instructor ids enrolled for this appointment (the `enrolled_instructor` array).
+  final List<int> enrolledInstructorIds;
   final String location;
 
   factory Appointment.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -39,7 +39,7 @@ class Appointment extends Equatable {
       id: doc.id,
       date: _formatDate(rawDate),
       dateTime: rawDate is Timestamp ? rawDate.toDate() : null,
-      enrolledTrainerIds: _intList(data['enrolled_trainer']),
+      enrolledInstructorIds: _intList(data['enrolled_instructor']),
       location: (data['location'] ?? '').toString(),
       appointmentId: (data['appointment_id'] as num?)?.toInt(),
     );
@@ -65,5 +65,5 @@ class Appointment extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, date, dateTime, enrolledTrainerIds, location, appointmentId];
+      [id, date, dateTime, enrolledInstructorIds, location, appointmentId];
 }

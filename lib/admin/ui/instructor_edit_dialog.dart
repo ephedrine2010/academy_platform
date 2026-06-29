@@ -3,40 +3,40 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../theme/app_theme.dart';
 import '../models/region.dart';
-import '../models/trainer.dart';
+import '../models/instructor.dart';
 
-/// Add/edit form for a trainer, including the many-to-many region assignment
-/// (rendered as selectable chips). Returns the edited [Trainer] (id is empty
+/// Add/edit form for an instructor, including the many-to-many region assignment
+/// (rendered as selectable chips). Returns the edited [Instructor] (id is empty
 /// for a new one), or null if cancelled.
-class TrainerEditDialog extends StatefulWidget {
-  const TrainerEditDialog({
+class InstructorEditDialog extends StatefulWidget {
+  const InstructorEditDialog({
     super.key,
     required this.regions,
     this.existing,
   });
 
   final List<Region> regions;
-  final Trainer? existing;
+  final Instructor? existing;
 
-  static Future<Trainer?> show(
+  static Future<Instructor?> show(
     BuildContext context, {
     required List<Region> regions,
-    Trainer? existing,
+    Instructor? existing,
   }) {
-    return showDialog<Trainer>(
+    return showDialog<Instructor>(
       context: context,
       builder: (_) =>
-          TrainerEditDialog(regions: regions, existing: existing),
+          InstructorEditDialog(regions: regions, existing: existing),
     );
   }
 
   @override
-  State<TrainerEditDialog> createState() => _TrainerEditDialogState();
+  State<InstructorEditDialog> createState() => _InstructorEditDialogState();
 }
 
-class _TrainerEditDialogState extends State<TrainerEditDialog> {
+class _InstructorEditDialogState extends State<InstructorEditDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _trainerId;
+  late final TextEditingController _instructorId;
   late final TextEditingController _name;
   late final TextEditingController _email;
   late final TextEditingController _phone;
@@ -47,7 +47,7 @@ class _TrainerEditDialogState extends State<TrainerEditDialog> {
   void initState() {
     super.initState();
     final e = widget.existing;
-    _trainerId = TextEditingController(text: e?.trainerId ?? '');
+    _instructorId = TextEditingController(text: e?.instructorId ?? '');
     _name = TextEditingController(text: e?.name ?? '');
     _email = TextEditingController(text: e?.email ?? '');
     _phone = TextEditingController(text: e?.phone ?? '');
@@ -57,7 +57,7 @@ class _TrainerEditDialogState extends State<TrainerEditDialog> {
 
   @override
   void dispose() {
-    _trainerId.dispose();
+    _instructorId.dispose();
     _name.dispose();
     _email.dispose();
     _phone.dispose();
@@ -67,9 +67,9 @@ class _TrainerEditDialogState extends State<TrainerEditDialog> {
 
   void _save() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final result = Trainer(
+    final result = Instructor(
       id: widget.existing?.id ?? '',
-      trainerId: _trainerId.text.trim(),
+      instructorId: _instructorId.text.trim(),
       name: _name.text.trim(),
       email: _email.text.trim(),
       phone: _phone.text.trim(),
@@ -83,7 +83,7 @@ class _TrainerEditDialogState extends State<TrainerEditDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-        widget.existing == null ? 'Add trainer' : 'Edit trainer',
+        widget.existing == null ? 'Add instructor' : 'Edit instructor',
       ),
       content: SizedBox(
         width: 420,
@@ -94,7 +94,7 @@ class _TrainerEditDialogState extends State<TrainerEditDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _field(_trainerId, 'Trainer ID', TablerIcons.id_badge_2,
+                _field(_instructorId, 'Instructor ID', TablerIcons.id_badge_2,
                     required: true),
                 const SizedBox(height: 12),
                 _field(_name, 'Name', TablerIcons.user, required: true),

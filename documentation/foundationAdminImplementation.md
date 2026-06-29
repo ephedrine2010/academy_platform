@@ -24,7 +24,7 @@ The existing SCORM player is preserved as the **Courses** tab (unchanged).
 
 | Question | Decision |
 | --- | --- |
-| Terminology | **Admin** (super user) · **Contractor** (regional manager/instructor) · **Trainee** (the trained employee — what early notes called "trainer/user"). |
+| Terminology | **Admin** (super user) · **Contractor** (regional manager/instructor) · **Trainee** (the trained employee — what early notes called "instructor/user"). |
 | First admin | Hardcoded by hand in an `admins` Firestore collection. |
 | Region ↔ Contractor | **Many-to-many**, re-assignable. Stored on the contractor side (`regionIds`). |
 | First milestone scope | **Foundation + Admin setup** (this document). |

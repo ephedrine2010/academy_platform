@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 typedef NewSession = ({String name, String description});
 
 /// Result of the "add appointment" dialog.
-typedef NewAppointment = ({DateTime date, String location, List<int> trainerIds});
+typedef NewAppointment = ({DateTime date, String location, List<int> instructorIds});
 
 /// Collects a session name + description. Returns null if cancelled or the name
 /// is empty.
@@ -59,14 +59,14 @@ Future<NewSession?> showAddSessionDialog(BuildContext context) async {
   return result;
 }
 
-/// Collects an appointment's date, location and assigned trainer ids — used for
+/// Collects an appointment's date, location and assigned instructor ids — used for
 /// both add and edit (pass the existing values to pre-fill). Returns null if
 /// cancelled.
 Future<NewAppointment?> showAppointmentDialog(
   BuildContext context, {
   DateTime? initialDate,
   String initialLocation = '',
-  List<int> initialTrainerIds = const [],
+  List<int> initialInstructorIds = const [],
   bool isEdit = false,
 }) {
   return showDialog<NewAppointment>(
@@ -74,7 +74,7 @@ Future<NewAppointment?> showAppointmentDialog(
     builder: (context) => _AppointmentDialog(
       initialDate: initialDate,
       initialLocation: initialLocation,
-      initialTrainerIds: initialTrainerIds,
+      initialInstructorIds: initialInstructorIds,
       isEdit: isEdit,
     ),
   );
@@ -84,13 +84,13 @@ class _AppointmentDialog extends StatefulWidget {
   const _AppointmentDialog({
     this.initialDate,
     this.initialLocation = '',
-    this.initialTrainerIds = const [],
+    this.initialInstructorIds = const [],
     this.isEdit = false,
   });
 
   final DateTime? initialDate;
   final String initialLocation;
-  final List<int> initialTrainerIds;
+  final List<int> initialInstructorIds;
   final bool isEdit;
 
   @override
@@ -99,14 +99,14 @@ class _AppointmentDialog extends StatefulWidget {
 
 class _AppointmentDialogState extends State<_AppointmentDialog> {
   late final _locationCtrl = TextEditingController(text: widget.initialLocation);
-  late final _trainersCtrl =
-      TextEditingController(text: widget.initialTrainerIds.join(', '));
+  late final _instructorsCtrl =
+      TextEditingController(text: widget.initialInstructorIds.join(', '));
   late DateTime? _date = widget.initialDate;
 
   @override
   void dispose() {
     _locationCtrl.dispose();
-    _trainersCtrl.dispose();
+    _instructorsCtrl.dispose();
     super.dispose();
   }
 
@@ -169,10 +169,10 @@ class _AppointmentDialogState extends State<_AppointmentDialog> {
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: _trainersCtrl,
+            controller: _instructorsCtrl,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
-              labelText: 'Assigned trainer ids',
+              labelText: 'Assigned instructor ids',
               hintText: 'comma separated, e.g. 222, 444, 555',
             ),
           ),
@@ -189,7 +189,7 @@ class _AppointmentDialogState extends State<_AppointmentDialog> {
               : () => Navigator.pop(context, (
                   date: _date!,
                   location: _locationCtrl.text.trim(),
-                  trainerIds: _parseIds(_trainersCtrl.text),
+                  instructorIds: _parseIds(_instructorsCtrl.text),
                 )),
           child: Text(widget.isEdit ? 'Save' : 'Add'),
         ),

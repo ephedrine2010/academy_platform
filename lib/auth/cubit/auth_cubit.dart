@@ -105,7 +105,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   /// Resolves the role from the matching `admins` doc's `role` field
-  /// (`admin01` → manager, `admin02` → trainer). No matching doc — or any
+  /// (`admin01` → manager, `admin02` → instructor). No matching doc — or any
   /// unrecognised value — means a plain [AppRole.trainee]. The admin docs are
   /// created by hand in the Firebase console; the stored `email` must match the
   /// sign-in email exactly.

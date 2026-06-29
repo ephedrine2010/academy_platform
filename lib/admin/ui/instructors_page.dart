@@ -5,29 +5,29 @@ import 'package:material_table_view/material_table_view.dart';
 
 import '../../theme/app_theme.dart';
 import '../cubit/regions_cubit.dart';
-import '../cubit/trainers_cubit.dart';
-import '../models/trainer.dart';
+import '../cubit/instructors_cubit.dart';
+import '../models/instructor.dart';
 import 'admin_widgets.dart';
-import 'trainer_edit_dialog.dart';
+import 'instructor_edit_dialog.dart';
 
-/// Admin screen: list / add / edit / delete trainers and assign them to
+/// Admin screen: list / add / edit / delete instructors and assign them to
 /// regions (many-to-many, freely re-assignable).
-class TrainersPage extends StatelessWidget {
-  const TrainersPage({super.key});
+class InstructorsPage extends StatelessWidget {
+  const InstructorsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TrainersCubit, TrainersState>(
+    return BlocBuilder<InstructorsCubit, InstructorsState>(
       builder: (context, state) {
-        final cubit = context.read<TrainersCubit>();
+        final cubit = context.read<InstructorsCubit>();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AdminToolbar(
               icon: TablerIcons.users,
-              title: 'Trainers',
-              subtitle: '${state.trainers.length} trainer(s)',
-              actionLabel: 'Add trainer',
+              title: 'Instructors',
+              subtitle: '${state.instructors.length} instructor(s)',
+              actionLabel: 'Add instructor',
               onAction: () => _edit(context, cubit),
             ),
             Expanded(child: _Body(state: state)),
@@ -39,17 +39,17 @@ class TrainersPage extends StatelessWidget {
 
   static Future<void> _edit(
     BuildContext context,
-    TrainersCubit cubit, {
-    Trainer? trainer,
+    InstructorsCubit cubit, {
+    Instructor? instructor,
   }) async {
     final regions = context.read<RegionsCubit>().state.regions;
-    final result = await TrainerEditDialog.show(
+    final result = await InstructorEditDialog.show(
       context,
       regions: regions,
-      existing: trainer,
+      existing: instructor,
     );
     if (result == null) return;
-    if (trainer == null) {
+    if (instructor == null) {
       await cubit.add(result);
     } else {
       await cubit.update(result);
@@ -60,7 +60,7 @@ class TrainersPage extends StatelessWidget {
 class _Body extends StatelessWidget {
   const _Body({required this.state});
 
-  final TrainersState state;
+  final InstructorsState state;
 
   @override
   Widget build(BuildContext context) {
@@ -70,18 +70,18 @@ class _Body extends StatelessWidget {
     if (state.error != null) {
       return AdminMessage(
         icon: TablerIcons.alert_triangle,
-        text: 'Could not load trainers:\n${state.error}',
+        text: 'Could not load instructors:\n${state.error}',
       );
     }
-    if (state.trainers.isEmpty) {
+    if (state.instructors.isEmpty) {
       return const AdminMessage(
         icon: TablerIcons.user_off,
-        text: 'No trainers yet.\nUse “Add trainer” to create one.',
+        text: 'No instructors yet.\nUse “Add instructor” to create one.',
       );
     }
 
-    final cubit = context.read<TrainersCubit>();
-    final trainers = state.trainers;
+    final cubit = context.read<InstructorsCubit>();
+    final instructors = state.instructors;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -94,14 +94,14 @@ class _Body extends StatelessWidget {
           TableColumn(width: 150, flex: 2),
           TableColumn(width: 112),
         ],
-        rowCount: trainers.length,
+        rowCount: instructors.length,
         rowHeight: 60,
         headerHeight: 44,
         headerBuilder: (context, contentBuilder) => contentBuilder(
           context,
           (context, column) => _HeaderCell(
             label: const [
-              'Trainer ID',
+              'Instructor ID',
               'Name',
               'Email',
               'Phone',
@@ -111,7 +111,7 @@ class _Body extends StatelessWidget {
           ),
         ),
         rowBuilder: (context, row, contentBuilder) {
-          final t = trainers[row];
+          final t = instructors[row];
           return contentBuilder(
             context,
             (context, column) => _cell(context, cubit, t, column),
@@ -123,13 +123,13 @@ class _Body extends StatelessWidget {
 
   Widget _cell(
     BuildContext context,
-    TrainersCubit cubit,
-    Trainer t,
+    InstructorsCubit cubit,
+    Instructor t,
     int column,
   ) {
     switch (column) {
       case 0:
-        return _TextCell(t.trainerId, weight: FontWeight.w600);
+        return _TextCell(t.instructorId, weight: FontWeight.w600);
       case 1:
         return _TextCell(t.name, weight: FontWeight.w600);
       case 2:
@@ -163,7 +163,7 @@ class _Body extends StatelessWidget {
               tooltip: 'Edit',
               icon: const Icon(TablerIcons.pencil, size: 18),
               onPressed: () =>
-                  TrainersPage._edit(context, cubit, trainer: t),
+                  InstructorsPage._edit(context, cubit, instructor: t),
             ),
             IconButton(
               tooltip: 'Delete',
@@ -178,12 +178,12 @@ class _Body extends StatelessWidget {
 
   Future<void> _confirmDelete(
     BuildContext context,
-    TrainersCubit cubit,
-    Trainer t,
+    InstructorsCubit cubit,
+    Instructor t,
   ) async {
     final ok = await confirmDelete(
       context,
-      message: 'Delete trainer “${t.name}”?',
+      message: 'Delete instructor “${t.name}”?',
     );
     if (ok) await cubit.delete(t.id);
   }

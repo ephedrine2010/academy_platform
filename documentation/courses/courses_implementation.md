@@ -1,6 +1,6 @@
 # Courses — Implementation
 
-**Last updated:** 2026-06-28 · see [Changelog](#10-changelog) for history.
+**Last updated:** 2026-06-29 · see [Changelog](#10-changelog) for history.
 
 How the **Courses** feature works: the Firestore-backed course list, the
 course → session → appointment drill-down, the admin authoring actions, and how
@@ -8,7 +8,7 @@ the old SCORM/demo course code was parked.
 
 > Scope today: list courses, drill into sessions and appointments, and let
 > admins author courses/sessions/appointments. Per-trainee enrollment filtering
-> and resolving trainer ids to names are **not** built yet (see
+> and resolving instructor ids to names are **not** built yet (see
 > [Limitations & next steps](#limitations--next-steps)).
 
 ---
@@ -18,9 +18,9 @@ the old SCORM/demo course code was parked.
 ```
 lib/courses/
   models/
-    course.dart          # Course + CourseSession (sessions are sub-collection DOCS)
-    appointment.dart     # Appointment (date, enrolled_trainer ids, location)
-    session_detail.dart  # SessionDetail (appointments + assigned trainer ids)
+    course.dart          # Course + CourseSession (sessions are top-level DOCS linked by course_id)
+    appointment.dart     # Appointment (date, enrolled_instructor ids, location)
+    session_detail.dart  # SessionDetail (appointments + assigned instructor ids)
   data/
     course_repository.dart   # Firestore reads (stream + loadSessions + loadSession) and writes
   cubit/
@@ -40,60 +40,61 @@ tag).
 
 ## 2. Firestore data model
 
-The `courses` collection is a clean three-level hierarchy: **course →
-`sessions` sub-collection → `appointments` sub-collection.**
+Two top-level collections: **`courses`** and **`sessions`**, with appointments
+nested under each session. Sessions link back to their course by a `course_id`
+field (= the course document id), instead of living inside the course doc.
 
 ```
 courses/care360                         (document)
   title: "Care 360"                     (optional display name; falls back to doc id)
   course_id: 1234567890                 (10-digit int id; set on "Add course")
 
-  └─ sessions/                          (sub-collection — FIXED name)
-       Health360                        (document; doc id = session name)
-         name: "Health360"
-         description: "about medicine"
-         session_id: 9876543210         (10-digit int id; set on "Add session")
-         order: 1                        (1-based sort position)
+sessions/9876543210                     (TOP-LEVEL collection; doc id = session_id)
+  course_id: "care360"                  (link back to the course DOC ID)
+  name: "Health360"
+  description: "about medicine"
+  session_id: 9876543210                (10-digit int id; == doc id)
+  order: 1                              (1-based sort position)
 
-         └─ appointments/               (sub-collection — FIXED name)
-              appointment1              (document)
-                date: <Timestamp>
-                enrolled_trainer: [222, 444, 555]   (int ARRAY of trainer ids)
-                location: "voco hotel"
-                appointment_id: 4445556667   (10-digit int id; set on "Add appointment")
-              assigned_trainer          (document — SINGULAR)
-                assign_to: [222, 111, 333, …]   (int ARRAY of trainer ids)
-
-       beauty360                        (document)
-         …
-         └─ appointments/
-              appointment1, appointment2, …
-              assigned_trainer
+  └─ appointments/                      (sub-collection — FIXED name, nested under session)
+       appointment1                     (document)
+         date: <Timestamp>
+         enrolled_instructor: [222, 444, 555]   (int ARRAY of instructor ids)
+         location: "voco hotel"
+         appointment_id: 4445556667     (10-digit int id; set on "Add appointment")
+       assigned_instructor                 (document — SINGULAR)
+         assign_to: [222, 111, 333, …]   (int ARRAY of instructor ids)
 ```
 
 ### Key rules / gotchas
 
-1. **Sessions are DOCUMENTS in a fixed `sessions` sub-collection** (not course-doc
-   fields, not an array). The doc id is the session name; `name` / `description` /
-   `session_id` / `order` are fields. Parsed by `CourseSession.fromDoc`.
-2. **The sub-collection names are fixed (`sessions`, `appointments`)** so the web
-   client can query them directly — see gotcha 5. Sessions sort by `order`, then
-   name.
-3. **The trainers doc is `assigned_trainer` (singular)** living in a session's
-   `appointments` sub-collection, with an `assign_to` int array. (The code also
-   accepts the plural `assigned_trainers` defensively, and splits it out of the
-   appointment list.)
-4. **`enrolled_trainer` on an appointment is an int array** of trainer ids, not
+1. **Sessions are DOCUMENTS in a top-level `sessions` collection** (not nested
+   under the course, not course-doc fields). Each is linked to its course by the
+   `course_id` field (the course **doc id**, e.g. `care360`). Parsed by
+   `CourseSession.fromDoc`.
+2. **Session doc id = the generated 10-digit `session_id`** (a string), *not* the
+   session name. Names can repeat across courses, which would collide in a shared
+   collection, so `name` is a plain field. A session is reachable by its id alone
+   — appointment/edit/delete calls no longer need the `courseId`.
+3. **Listing a course's sessions is a query**, not a sub-collection read:
+   `sessions.where('course_id', isEqualTo: courseId)`, sorted by `order` then name
+   **client-side** (so no composite index is needed).
+4. **The `appointments` sub-collection name is fixed** and nests under the session
+   doc (`sessions/{sessionId}/appointments`), so the web client can read it
+   directly. The instructors doc is **`assigned_instructor` (singular)** with an
+   `assign_to` int array. (The code also accepts the plural `assigned_instructors`
+   defensively, and splits it out of the appointment list.)
+5. **`enrolled_instructor` on an appointment is an int array** of instructor ids, not
    a single name.
-5. **Fixed names sidestep the listing limit.** The Flutter / web `cloud_firestore`
-   client **cannot list a document's *unknown* sub-collections** (`listCollections`
-   is Admin-SDK only). Using **fixed** names (`sessions`, `appointments`) avoids
-   that entirely — we always know what to query. (This is why the earlier
-   field-based session model is no longer needed.)
-6. **Phantom documents:** a course document holding *only* sub-collections (no
+6. **Why flat sessions?** The Flutter / web `cloud_firestore` client **cannot list
+   a document's *unknown* sub-collections** (`listCollections` is Admin-SDK only).
+   A top-level `sessions` collection queried by `course_id` sidesteps that, keeps
+   paths short, and makes cross-course session queries easy. (This replaced the
+   earlier `courses/{id}/sessions` sub-collection model.)
+7. **Phantom documents:** a course document holding *only* sub-collections (no
    top-level fields) will **not** appear in a collection query. Every course
    doc needs at least a `title` field (the "Add course" action writes one).
-7. **Stable numeric ids (`course_id` / `session_id` / `appointment_id`).** Each
+8. **Stable numeric ids (`course_id` / `session_id` / `appointment_id`).** Each
    add action stamps a random **10-digit int** id as a field (separate from the
    doc id). Generated by `CourseRepository._newId` (built digit-by-digit because
    the range exceeds `Random.nextInt`'s 2^32 limit) and **not regenerated on
@@ -105,25 +106,30 @@ courses/care360                         (document)
 
 ### Listing courses (live)
 
-`CourseRepository.watch()` streams `courses.snapshots()` → maps each doc through
-`Course.fromDoc` (title + `course_id` only) → `CoursesCubit` emits `CoursesState`.
-Sessions are **not** part of this stream — they live in a sub-collection and load
-on demand (next section).
+`CourseRepository.watch()` streams the `courses` collection → maps each doc
+through `Course.fromDoc` (title + `course_id` only) → `CoursesCubit` emits
+`CoursesState`. When the repo has a `creatorId`, the stream is scoped to
+`courses.where('created_by', isEqualTo: creatorId)` (see [§6](#6-roles--gating)).
+Sessions are **not** part of this stream — they live in the top-level `sessions`
+collection and load on demand (next section).
 
 `CoursesCubit` is provided:
 
-- **Admin/trainer:** per Courses tab in `lib/shell/app_shell.dart`
-  (`BlocProvider(create: CoursesCubit())` → `AdminCoursesPage`).
-- **Trainee:** once in `lib/user/user_home.dart`, shared by the Home, Courses
-  and Schedule screens (`CoursesListBody`).
+- **Admin/instructor:** per Courses tab in `lib/shell/app_shell.dart`, scoped to the
+  signed-in user (`CoursesCubit(creatorId: user.id, creatorEmail: user.email)` →
+  `AdminCoursesPage`) so each admin sees only the courses they created.
+- **Trainee:** once in `lib/user/user_home.dart` as a plain `CoursesCubit()`
+  (unscoped — sees every course), shared by the Home, Courses and Schedule
+  screens (`CoursesListBody`).
 
 ### Loading a course's sessions (on demand)
 
 When a course row is **expanded**, `CourseExpansionTile` calls
 `CoursesCubit.loadSessions(courseId)` → `CourseRepository.loadSessions`, which
-`get()`s the `sessions` sub-collection, parses each doc via
-`CourseSession.fromDoc`, and sorts by `order` then name. Held in a `FutureBuilder`
-so it fetches once per expand (re-run after a session add/edit/delete).
+queries the top-level `sessions` collection (`where('course_id', isEqualTo:
+courseId)`), parses each doc via `CourseSession.fromDoc`, and sorts by `order`
+then name client-side. Held in a `FutureBuilder` so it fetches once per expand
+(re-run after a session add/edit/delete).
 
 > Because sessions load lazily, a **collapsed** course row can't show an exact
 > session count (that was the trade-off for moving them out of the course doc —
@@ -132,12 +138,12 @@ so it fetches once per expand (re-run after a session add/edit/delete).
 ### Loading a session's appointments (on demand)
 
 When a session row is **expanded**, `_SessionTile` calls
-`CoursesCubit.loadSession(courseId, sessionId)` → `CourseRepository.loadSession`,
-which `get()`s the session's `appointments` sub-collection and:
+`CoursesCubit.loadSession(sessionId)` → `CourseRepository.loadSession`,
+which `get()`s the session's nested `appointments` sub-collection and:
 
-- splits the `assigned_trainer` doc out of the appointment docs,
+- splits the `assigned_instructor` doc out of the appointment docs,
 - parses appointment docs via `Appointment.fromDoc`,
-- returns a `SessionDetail { appointments, assignedTrainerIds }`.
+- returns a `SessionDetail { appointments, assignedInstructorIds }`.
 
 The result is held in a `FutureBuilder` so it only fetches once per expand
 (re-fetched after an admin write — see below).
@@ -151,7 +157,7 @@ The result is held in a `FutureBuilder` so it only fetches once per expand
 Used by **Home**, **Courses** and **Schedule** (`lib/ui/screens/…`). For now all
 three show **every** course (no per-trainee filtering yet). Renders
 `CourseExpansionTile(isAdmin: false)` — so trainees can drill into sessions and
-appointments but see **no** assigned-trainer roster and **no** admin buttons.
+appointments but see **no** assigned-instructor roster and **no** admin buttons.
 
 ### Admin (`AdminCoursesPage`)
 
@@ -174,9 +180,9 @@ actions are pencil/trash icons on each appointment row.
 
 | Action | Where | Dialog | Firestore write |
 |---|---|---|---|
-| **Add course** | Courses tab header | `promptForText` (name) | `courses/{name}` set `{title: name, course_id: <10-digit int>}` (merge) |
-| **Add session** | under each course | name + description | `courses/{id}/sessions/{name}` set `{name, description, session_id: <10-digit int>, order}`; `order = sessions.length + 1` |
-| **Add appointment & assign** | under each session | date+time, location, trainer ids (comma-separated ints) | `…/sessions/{sessionId}/appointments/appointment{N}` with `date`/`location`/`enrolled_trainer`/`appointment_id` (10-digit int); **plus** `assign_to` union into the sibling `assigned_trainer` doc |
+| **Add course** | Courses tab header | `promptForText` (name) | `courses/{name}` set `{title: name, course_id: <10-digit int>, created_by: <admin uid>, created_by_email}` (merge) |
+| **Add session** | under each course | name + description | `sessions/{session_id}` set `{course_id: <course doc id>, name, description, session_id: <10-digit int>, order}`; `order = sessions.length + 1` |
+| **Add appointment & assign** | under each session | date+time, location, instructor ids (comma-separated ints) | `sessions/{sessionId}/appointments/appointment{N}` with `date`/`location`/`enrolled_instructor`/`appointment_id` (10-digit int); **plus** `assign_to` union into the sibling `assigned_instructor` doc |
 
 The ids are auto-generated 10-digit ints (admin enters no id), shown as `ID …`
 in the admin tiles.
@@ -186,20 +192,20 @@ in the admin tiles.
 | Action | Editable | Firestore write |
 |---|---|---|
 | **Edit course** | `title` | `courses/{id}` set `{title}` (merge). Doc id is fixed. |
-| **Edit session** | description | update the session doc's `description` field. The doc id (= name) is fixed, so links don't break. |
-| **Edit appointment** | date / location / trainer ids | re-uses the appointment dialog **pre-filled** (via `Appointment.dateTime`); merge-writes the appointment + unions trainer ids into `assigned_trainer`. |
+| **Edit session** | description | update the session doc's `description` field. The doc id (= `session_id`) is fixed, so links don't break. |
+| **Edit appointment** | date / location / instructor ids | re-uses the appointment dialog **pre-filled** (via `Appointment.dateTime`); merge-writes the appointment + unions instructor ids into `assigned_instructor`. |
 
 ### Delete (cascades)
 
 | Action | Firestore write |
 |---|---|
-| **Delete course** | enumerate the `sessions` sub-collection; for each session batch-delete its `appointments` sub-collection then the session doc; finally delete the course doc. |
+| **Delete course** | query `sessions where course_id == courseId`; for each session batch-delete its `appointments` sub-collection then the session doc; finally delete the course doc. |
 | **Delete session** | batch-delete the session's `appointments` sub-collection, then delete the session doc. |
 | **Delete appointment** | delete the single `appointment{N}` doc. |
 
-> Cascades use the **fixed** sub-collection names (`sessions`, `appointments`) +
-> a batched `_deleteSubcollection` helper — no enumeration of unknown
-> sub-collections needed. `assigned_trainer` rosters are **not** pruned on
+> The course cascade queries the top-level `sessions` collection by `course_id`;
+> appointment cascades use the **fixed** nested `appointments` name + a batched
+> `_deleteSubcollection` helper. `assigned_instructor` rosters are **not** pruned on
 > appointment delete (recomputing them is out of scope for now).
 
 Write methods live on `CourseRepository` (`addCourse`/`addSession`/
@@ -223,14 +229,15 @@ shared `promptForText` / `confirmDelete` from `admin/ui/admin_widgets.dart`.
 ## 6. Roles & gating
 
 Role resolution (`lib/auth/cubit/auth_state.dart`): the `admins` doc's `role`
-maps `admin01` → **manager**, `admin02` → **trainer**; anyone else is a
-**trainee**. Both manager and trainer are `isAdmin`.
+maps `admin01` → **manager**, `admin02` → **instructor**; anyone else is a
+**trainee**. Both manager and instructor are `isAdmin`.
 
 - **Trainees** → `UserHome` → `CoursesListBody(isAdmin: false)`. Read-only, no
-  trainer roster, no buttons.
+  instructor roster, no buttons.
 - **admin01 + admin02** → `AppShell` → `AdminCoursesPage` →
   `CourseExpansionTile(isAdmin: true)`. Full roster + all add/edit/delete
-  buttons.
+  buttons. Each admin sees **only the courses they created** (the cubit is scoped
+  by the signed-in uid via `created_by` — see the 2026-06-29 changelog entry).
 
 > The gating is **client-side only**. Firestore security rules to restrict
 > `courses` writes to admin01/admin02 are not written yet.
@@ -247,7 +254,7 @@ only):
 - `loadSessions()` logs the path queried, each session doc's raw fields, and the
   session count.
 - `loadSession()` logs the path queried, each appointment doc's raw fields, the
-  parsed appointment fields, the assigned trainer ids, and a per-session summary.
+  parsed appointment fields, the assigned instructor ids, and a per-session summary.
 - The UI logs `course selected → …` and `session selected → …` on expand.
 
 This is the first thing to check when "nothing shows": the raw `doc.data()` log
@@ -274,14 +281,16 @@ since the Profile screen and the parked screens still use them.
 
 ## 9. Limitations & next steps
 
-- **Trainer ids are shown raw** (`Trainer 222`). Resolving them to names needs a
-  confirmed mapping between the int ids and the `trainers` collection
-  (`Trainer.trainerId` is free-text String). The "assign" input also takes raw
-  ids rather than a trainer picker.
+- **Instructor ids are shown raw** (`Instructor 222`). Resolving them to names needs a
+  confirmed mapping between the int ids and the `instructors` collection
+  (`Instructor.instructorId` is free-text String). The "assign" input also takes raw
+  ids rather than a instructor picker.
 - **No per-trainee filtering.** Trainee Home/Courses/Schedule show every course;
   the plan is to narrow to the trainee's assignments via `assign_to`.
 - **No security rules.** Course writes/deletes are open; lock them to
-  admin01/admin02.
+  admin01/admin02. **Creator scoping (`created_by`) is a client query only** — a
+  client could still read other admins' courses until a rule enforces it. Legacy
+  courses without `created_by` are invisible to every admin.
 - **Edit is safe-fields-only.** Renaming a course or session (their doc ids) is
   not supported — it would require migrating the underlying docs/sub-collections.
 - **Collapsed rows show no session count.** Sessions load lazily on expand, so a
@@ -289,22 +298,62 @@ since the Profile screen and the parked screens still use them.
   field (or eager-load) if that count is wanted up front.
 - **Cascade deletes run client-side** via batched writes. If a delete is
   interrupted, sub-collection docs can be orphaned; a Cloud Function `onDelete`
-  trigger is the eventual robust home for this. `assigned_trainer` rosters
+  trigger is the eventual robust home for this. `assigned_instructor` rosters
   aren't pruned when appointments are deleted.
 - **Appointment ids** are `appointment{N}` by count — concurrent adds could
   collide; fine for single-admin authoring.
-- **Data hygiene:** the sample data had a typo field `enrroled_trainer`
-  alongside `enrolled_trainer`; the app reads only the correctly-spelled one.
+- **Data hygiene:** the sample data had a typo field `enrroled_instructor`
+  alongside `enrolled_instructor`; the app reads only the correctly-spelled one.
 
 ---
 
 ## 10. Changelog
 
+### 2026-06-29 — Courses scoped to their creator (admin)
+
+Each admin now sees **only the courses they created**. "Add course" stamps
+`created_by` (the admin's Firebase **uid**) and `created_by_email` on the course
+doc; the admin Courses tab streams `courses.where('created_by', isEqualTo: uid)`
+(single-field equality → no composite index).
+
+- `CourseRepository` gained `creatorId` / `creatorEmail`. When `creatorId` is
+  set, `watch()` filters by `created_by` and `addCourse` stamps the creator
+  fields; when null (the trainee `CoursesListBody`) it streams **every** course.
+- `CoursesCubit({creatorId, creatorEmail})` passes them to the repo.
+  `lib/shell/app_shell.dart` reads the signed-in user from `AuthCubit` and scopes
+  the admin tab's cubit; `lib/user/user_home.dart` still uses a plain
+  `CoursesCubit()` (unscoped).
+- **Both manager and instructor are scoped the same way** (each sees only their own
+  courses). Legacy courses without a `created_by` field won't appear for any
+  admin. Filtering is client-query only — no security rule enforces it yet.
+
+### 2026-06-29 — Sessions flattened to a top-level collection
+
+Moved sessions out of the `courses/{id}/sessions` sub-collection into a
+**top-level `sessions` collection**, linked back to the course by a `course_id`
+field (= the course doc id). Goal: shorter Firestore paths, readable structure,
+and direct `where('course_id', …)` queries for a course's sessions.
+
+- **Session doc id is now the 10-digit `session_id`** (was the session name).
+  Names can repeat across courses, so the name is a field only.
+- `loadSessions(courseId)` is now a query on the top-level collection (sorted
+  client-side → no composite index). `deleteCourse` cascades by querying
+  `sessions where course_id == courseId`.
+- **Appointments stay nested** under the session
+  (`sessions/{sessionId}/appointments`), so the appointment path is short and the
+  cascade stays a simple sub-collection delete.
+- **`courseId` dropped from the appointment/session-detail API**:
+  `loadSession`/`addAppointment`/`editAppointment`/`deleteAppointment` and
+  `editSession`/`deleteSession` now take only the `sessionId`. `addSession` still
+  takes `courseId` (to write the link). UI threading updated accordingly.
+- **Existing sub-collection sessions are not migrated** (start-fresh). See
+  [§2](#2-firestore-data-model), [§3](#3-data-flow), [§5](#5-admin-authoring-add--edit--delete).
+
 ### 2026-06-28 — Sessions moved to a sub-collection
 
 Reworked the data model from **sessions-as-course-doc-fields** to a clean
 three-level hierarchy: `courses/{id}` → `sessions/{name}` sub-collection →
-`appointments/{id}` sub-collection (with the `assigned_trainer` doc alongside
+`appointments/{id}` sub-collection (with the `assigned_instructor` doc alongside
 appointments). Fixed sub-collection names (`sessions`, `appointments`) sidestep
 the web client's can't-list-unknown-sub-collections limit, so the old field/key
 encoding (`sessionN-name`, `session_ids` map) is gone.
@@ -339,7 +388,7 @@ Added **Edit** and **Delete** actions beside the existing Add buttons, gated to
 admin01/admin02 (`isAdmin`):
 
 - **Edit** (safe-fields-only): course `title`, session description, appointment
-  date/location/trainer ids (dialog pre-filled via the new `Appointment.dateTime`).
+  date/location/instructor ids (dialog pre-filled via the new `Appointment.dateTime`).
   Course ids and session keys never change, so the
   course→session→appointment links can't break.
 - **Delete** (cascades): delete course (clears all session sub-collections then
@@ -352,11 +401,11 @@ admin01/admin02 (`isAdmin`):
 
 ### 2026-06-27 — Admin authoring (add) + real data model
 
-- **Add** course / session / appointment, with trainer assignment unioned into
-  the session-level `assigned_trainer` roster.
+- **Add** course / session / appointment, with instructor assignment unioned into
+  the session-level `assigned_instructor` roster.
 - Reworked the data model to the **real** Firestore shape: sessions as course-doc
   fields with a `sessionN-` ordering prefix → sub-collection name; singular
-  `assigned_trainer`; `enrolled_trainer` as an int array. Added `[COURSE]`
+  `assigned_instructor`; `enrolled_instructor` as an int array. Added `[COURSE]`
   logging at every level. See [§2](#2-firestore-data-model), [§7](#7-logging).
 
 ### 2026-06-27 — Initial Courses feature

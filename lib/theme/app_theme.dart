@@ -47,7 +47,7 @@ class AppColors {
     lime,
   ];
 
-  /// A deterministic accent for a given string key (region/trainer name).
+  /// A deterministic accent for a given string key (region/instructor name).
   static Color accentFor(String key) {
     if (key.isEmpty) return teal;
     final hash = key.codeUnits.fold<int>(0, (a, c) => a + c);

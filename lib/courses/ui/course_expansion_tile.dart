@@ -14,7 +14,7 @@ import 'course_admin_dialogs.dart';
 
 /// A course row that expands to lazily load and reveal its sessions; each
 /// session in turn expands to load that session's appointments. Assigned
-/// trainers are shown under a session only when [isAdmin] is true.
+/// instructors are shown under a session only when [isAdmin] is true.
 class CourseExpansionTile extends StatefulWidget {
   const CourseExpansionTile({
     super.key,
@@ -53,8 +53,8 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
   Future<void> _addSession(int existingCount) async {
     final result = await showAddSessionDialog(context);
     if (result == null || !mounted) return;
-    await context.read<CoursesCubit>().add_Session(
-      _course.courseId,
+    await context.read<CoursesCubit>().addSession(
+      _course.id,
       name: result.name,
       description: result.description,
       order: existingCount + 1,
@@ -203,7 +203,7 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
 }
 
 /// One session row. Fetches its appointments (and, for admins, assigned
-/// trainers) the first time it is expanded.
+/// instructors) the first time it is expanded.
 class _SessionTile extends StatefulWidget {
   const _SessionTile({
     required this.courseId,
@@ -238,10 +238,7 @@ class _SessionTileState extends State<_SessionTile> {
 
   void _load() {
     setState(() {
-      _future = context.read<CoursesCubit>().loadSession(
-        widget.courseId,
-        widget.session.id,
-      );
+      _future = context.read<CoursesCubit>().loadSession(widget.session.id);
     });
   }
 
@@ -321,7 +318,6 @@ class _SessionTileState extends State<_SessionTile> {
                   return _SessionBody(
                     detail: detail,
                     isAdmin: widget.isAdmin,
-                    courseId: widget.courseId,
                     session: session,
                     onAppointmentsChanged: _load,
                     onSessionsChanged: widget.onSessionsChanged,
@@ -339,7 +335,6 @@ class _SessionBody extends StatelessWidget {
   const _SessionBody({
     required this.detail,
     required this.isAdmin,
-    required this.courseId,
     required this.session,
     required this.onAppointmentsChanged,
     required this.onSessionsChanged,
@@ -347,7 +342,6 @@ class _SessionBody extends StatelessWidget {
 
   final SessionDetail detail;
   final bool isAdmin;
-  final String courseId;
   final CourseSession session;
 
   /// Reloads this session's appointments (after an appointment add/edit/delete).
@@ -360,11 +354,10 @@ class _SessionBody extends StatelessWidget {
     final result = await showAppointmentDialog(context);
     if (result == null || !context.mounted) return;
     await context.read<CoursesCubit>().addAppointment(
-      courseId,
       session.id,
       date: result.date,
       location: result.location,
-      trainerIds: result.trainerIds,
+      instructorIds: result.instructorIds,
     );
     onAppointmentsChanged();
   }
@@ -378,8 +371,7 @@ class _SessionBody extends StatelessWidget {
     );
     if (desc == null || !context.mounted) return;
     await context.read<CoursesCubit>().editSession(
-      courseId,
-      sessionId: session.id,
+      session.id,
       description: desc,
     );
     onSessionsChanged();
@@ -391,7 +383,7 @@ class _SessionBody extends StatelessWidget {
       message: 'Delete session “${session.name}” and its appointments?',
     );
     if (!ok || !context.mounted) return;
-    await context.read<CoursesCubit>().deleteSession(courseId, session.id);
+    await context.read<CoursesCubit>().deleteSession(session.id);
     onSessionsChanged();
   }
 
@@ -412,15 +404,14 @@ class _SessionBody extends StatelessWidget {
             _AppointmentRow(
               appointment: a,
               isAdmin: isAdmin,
-              courseId: courseId,
               sessionId: session.id,
               onChanged: onAppointmentsChanged,
             ),
         if (isAdmin) ...[
           const SizedBox(height: 12),
-          _Label('Assigned trainers'),
+          _Label('Assigned instructors'),
           const SizedBox(height: 6),
-          if (detail.assignedTrainerIds.isEmpty)
+          if (detail.assignedInstructorIds.isEmpty)
             Text(
               'None assigned.',
               style: GoogleFonts.manrope(fontSize: 11, color: AppColors.muted),
@@ -430,11 +421,11 @@ class _SessionBody extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                for (final id in detail.assignedTrainerIds)
+                for (final id in detail.assignedInstructorIds)
                   Chip(
                     visualDensity: VisualDensity.compact,
                     avatar: const Icon(TablerIcons.user, size: 14),
-                    label: Text('Trainer $id'),
+                    label: Text('Instructor $id'),
                   ),
               ],
             ),
@@ -471,14 +462,12 @@ class _AppointmentRow extends StatelessWidget {
   const _AppointmentRow({
     required this.appointment,
     required this.isAdmin,
-    required this.courseId,
     required this.sessionId,
     required this.onChanged,
   });
 
   final Appointment appointment;
   final bool isAdmin;
-  final String courseId;
   final String sessionId;
   final VoidCallback onChanged;
 
@@ -487,17 +476,16 @@ class _AppointmentRow extends StatelessWidget {
       context,
       initialDate: appointment.dateTime,
       initialLocation: appointment.location,
-      initialTrainerIds: appointment.enrolledTrainerIds,
+      initialInstructorIds: appointment.enrolledInstructorIds,
       isEdit: true,
     );
     if (result == null || !context.mounted) return;
     await context.read<CoursesCubit>().editAppointment(
-      courseId,
       sessionId,
       appointment.id,
       date: result.date,
       location: result.location,
-      trainerIds: result.trainerIds,
+      instructorIds: result.instructorIds,
     );
     onChanged();
   }
@@ -509,7 +497,6 @@ class _AppointmentRow extends StatelessWidget {
     );
     if (!ok || !context.mounted) return;
     await context.read<CoursesCubit>().deleteAppointment(
-      courseId,
       sessionId,
       appointment.id,
     );
@@ -520,8 +507,8 @@ class _AppointmentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final meta = [
       if (appointment.location.isNotEmpty) appointment.location,
-      if (appointment.enrolledTrainerIds.isNotEmpty)
-        'Trainers: ${appointment.enrolledTrainerIds.join(', ')}',
+      if (appointment.enrolledInstructorIds.isNotEmpty)
+        'Instructors: ${appointment.enrolledInstructorIds.join(', ')}',
       if (isAdmin && appointment.appointmentId != null)
         'ID ${appointment.appointmentId}',
     ].join(' · ');

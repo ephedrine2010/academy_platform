@@ -7,7 +7,7 @@ service cloud.firestore {
     // employee id and matched by their `email` field, not the Firebase Auth UID),
     // so we can't gate writes by role here. Until that's designed, the rule is
     // simply: any signed-in user may read and write anything. This is what keeps
-    // the admin screens (regions, trainers stored under `admins/{id}` with
+    // the admin screens (regions, instructors stored under `admins/{id}` with
     // role `admin02`, etc.) working without permission-denied errors.
     //
     // SECURITY: This is intentionally permissive for development. Tighten before

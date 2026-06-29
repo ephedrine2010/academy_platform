@@ -4,14 +4,14 @@ enum AuthStatus { signedOut, signingIn, signedIn }
 
 /// Permission level resolved after sign-in from the `admins/{doc}.role` field.
 ///
-/// - [manager] (`admin01`) — main manager: regions, trainers, courses, and
+/// - [manager] (`admin01`) — main manager: regions, instructors, courses, and
 ///   assigning courses to trainees.
-/// - [trainer] (`admin02`) — trainer: creates courses and assigns them to
+/// - [instructor] (`admin02`) — instructor: creates courses and assigns them to
 ///   trainees.
 /// - [trainee] — everyone else (no `admins` doc): the normal user.
 enum AppRole {
   manager,
-  trainer,
+  instructor,
   trainee;
 
   /// Maps the stored `role` string on an `admins` doc to a role. Anything
@@ -21,7 +21,7 @@ enum AppRole {
       case 'admin01':
         return AppRole.manager;
       case 'admin02':
-        return AppRole.trainer;
+        return AppRole.instructor;
       default:
         return AppRole.trainee;
     }
@@ -43,10 +43,10 @@ class AuthState extends Equatable {
 
   bool get isSignedIn => status == AuthStatus.signedIn && user != null;
 
-  /// Any privileged role (manager or trainer) — i.e. sees the admin shell.
-  bool get isAdmin => role == AppRole.manager || role == AppRole.trainer;
+  /// Any privileged role (manager or instructor) — i.e. sees the admin shell.
+  bool get isAdmin => role == AppRole.manager || role == AppRole.instructor;
   bool get isManager => role == AppRole.manager;
-  bool get isTrainer => role == AppRole.trainer;
+  bool get isInstructor => role == AppRole.instructor;
   bool get isTrainee => role == AppRole.trainee;
   bool get isBusy => status == AuthStatus.signingIn;
 

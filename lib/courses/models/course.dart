@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
-/// One session of a course. Sessions are stored as **documents** in the course's
-/// `sessions` sub-collection (`courses/{courseId}/sessions/{id}`). The document
-/// id is the session [name]; that session's appointments + `assigned_trainer`
-/// doc live in a nested `appointments` sub-collection (see
-/// [CourseRepository.loadSession]).
+/// One session of a course. Sessions are stored as **documents in a top-level
+/// `sessions` collection** (`sessions/{id}`), linked to their course by a
+/// `course_id` field (= the course document id). The document id is the
+/// generated 10-digit [sessionId] (not the name — names can repeat across
+/// courses). That session's appointments + `assigned_instructor` doc live in a
+/// nested `appointments` sub-collection (see [CourseRepository.loadSession]).
 class CourseSession extends Equatable {
   const CourseSession({
     required this.id,

@@ -3,10 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../admin/cubit/regions_cubit.dart';
-import '../admin/cubit/trainers_cubit.dart';
+import '../admin/cubit/instructors_cubit.dart';
 import '../admin/ui/admin_dashboard_page.dart';
 import '../admin/ui/regions_page.dart';
-import '../admin/ui/trainers_page.dart';
+import '../admin/ui/instructors_page.dart';
 import '../auth/cubit/auth_cubit.dart';
 import '../courses/cubit/courses_cubit.dart';
 import '../courses/ui/admin_courses_page.dart';
@@ -28,7 +28,7 @@ class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.role});
 
   /// The signed-in user's role. Determines which tabs show: a [AppRole.manager]
-  /// sees Dashboard/Regions/Trainers/Courses; a [AppRole.trainer] sees only
+  /// sees Dashboard/Regions/Instructors/Courses; a [AppRole.instructor] sees only
   /// Courses. (Trainees never reach the shell — they get the user home screen.)
   final AppRole role;
 
@@ -54,18 +54,25 @@ class _AppShellState extends State<AppShell> {
             builder: (_) => const RegionsPage(),
           ),
           _Tab(
-            label: 'Trainers',
+            label: 'Instructors',
             icon: TablerIcons.users,
-            builder: (_) => const TrainersPage(),
+            builder: (_) => const InstructorsPage(),
           ),
         ],
         _Tab(
           label: 'Courses',
           icon: TablerIcons.book,
-          builder: (_) => BlocProvider(
-            create: (_) => CoursesCubit(),
-            child: const AdminCoursesPage(),
-          ),
+          builder: (context) {
+            // Scope the admin's courses to the courses they created.
+            final user = context.read<AuthCubit>().state.user;
+            return BlocProvider(
+              create: (_) => CoursesCubit(
+                creatorId: user?.id,
+                creatorEmail: user?.email,
+              ),
+              child: const AdminCoursesPage(),
+            );
+          },
         ),
       ];
 
@@ -74,7 +81,7 @@ class _AppShellState extends State<AppShell> {
     final tabs = _tabs;
     final index = _index.clamp(0, tabs.length - 1);
 
-    // Admin tabs share live region + trainer data, created once here.
+    // Admin tabs share live region + instructor data, created once here.
     Widget shell = LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
@@ -90,7 +97,7 @@ class _AppShellState extends State<AppShell> {
       shell = MultiBlocProvider(
         providers: [
           BlocProvider(create: (_) => RegionsCubit()),
-          BlocProvider(create: (_) => TrainersCubit()),
+          BlocProvider(create: (_) => InstructorsCubit()),
         ],
         child: shell,
       );
@@ -308,8 +315,8 @@ class _RailFooter extends StatelessWidget {
     switch (role) {
       case AppRole.manager:
         return 'Manager';
-      case AppRole.trainer:
-        return 'Trainer';
+      case AppRole.instructor:
+        return 'Instructor';
       case AppRole.trainee:
         return 'Trainee';
     }

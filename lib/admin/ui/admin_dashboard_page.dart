@@ -5,7 +5,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../auth/cubit/auth_cubit.dart';
 import '../../theme/app_theme.dart';
 import '../cubit/regions_cubit.dart';
-import '../cubit/trainers_cubit.dart';
+import '../cubit/instructors_cubit.dart';
 
 /// Landing screen for admins: a greeting plus live counts of the data they
 /// manage. More tiles (courses, trainees) land here in later milestones.
@@ -16,8 +16,8 @@ class AdminDashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = context.select((AuthCubit c) => c.state.user?.name ?? 'Admin');
     final regions = context.watch<RegionsCubit>().state.regions.length;
-    final trainers =
-        context.watch<TrainersCubit>().state.trainers.length;
+    final instructors =
+        context.watch<InstructorsCubit>().state.instructors.length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -50,8 +50,8 @@ class AdminDashboardPage extends StatelessWidget {
               ),
               _StatCard(
                 icon: TablerIcons.users,
-                label: 'Trainers',
-                value: '$trainers',
+                label: 'Instructors',
+                value: '$instructors',
                 color: AppColors.green,
               ),
             ],

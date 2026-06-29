@@ -7,7 +7,7 @@ import '../cubit/auth_cubit.dart';
 import 'login_page.dart';
 
 /// Shows the [LoginPage] until the user is signed in, then routes by role:
-/// managers/trainers get the admin [AppShell]; plain trainees get [UserHome].
+/// managers/instructors get the admin [AppShell]; plain trainees get [UserHome].
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 

@@ -5,19 +5,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../academy/utils/log.dart';
 import '../data/region_repository.dart';
-import '../data/trainer_repository.dart';
+import '../data/instructor_repository.dart';
 import '../models/region.dart';
 
 part 'regions_state.dart';
 
 /// Live list of regions plus create/rename/delete. Deleting a region also
-/// scrubs it from every trainer's assignment list.
+/// scrubs it from every instructor's assignment list.
 class RegionsCubit extends Cubit<RegionsState> {
   RegionsCubit({
     RegionRepository? regions,
-    TrainerRepository? trainers,
+    InstructorRepository? instructors,
   })  : _regions = regions ?? RegionRepository(),
-        _trainers = trainers ?? TrainerRepository(),
+        _instructors = instructors ?? InstructorRepository(),
         super(const RegionsState()) {
     _sub = _regions.watch().listen(
       (list) => emit(state.copyWith(regions: list, loading: false)),
@@ -29,7 +29,7 @@ class RegionsCubit extends Cubit<RegionsState> {
   }
 
   final RegionRepository _regions;
-  final TrainerRepository _trainers;
+  final InstructorRepository _instructors;
   late final StreamSubscription<List<Region>> _sub;
 
   Future<void> add(String name) => _regions.add(name.trim());
@@ -39,13 +39,13 @@ class RegionsCubit extends Cubit<RegionsState> {
     final oldName = _nameOf(id);
     await _regions.rename(id, newName);
     if (oldName != null) {
-      await _trainers.renameRegionInAll(oldName, newName);
+      await _instructors.renameRegionInAll(oldName, newName);
     }
   }
 
   Future<void> delete(String id) async {
     final name = _nameOf(id);
-    if (name != null) await _trainers.removeRegionFromAll(name);
+    if (name != null) await _instructors.removeRegionFromAll(name);
     await _regions.delete(id);
   }
 
