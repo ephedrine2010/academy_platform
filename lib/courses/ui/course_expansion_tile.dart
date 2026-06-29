@@ -54,7 +54,7 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
     final result = await showAddSessionDialog(context);
     if (result == null || !mounted) return;
     await context.read<CoursesCubit>().add_Session(
-      _course.id,
+      _course.courseId,
       name: result.name,
       description: result.description,
       order: existingCount + 1,

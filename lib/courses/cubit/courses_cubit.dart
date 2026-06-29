@@ -31,14 +31,26 @@ class CoursesCubit extends Cubit<CoursesState> {
 
   //manually created
   Future<void> add_Session(
-    String courseId, {
+    int? courseId, {
     required String name,
     required String description,
     required int order,
   }) async {
     // get the course document reference directly from its id (the doc id)
-    final courseRef =
-        FirebaseFirestore.instance.collection('courses').doc(courseId);
+
+    await FirebaseFirestore.instance
+        .collection('courses')
+        .where('course_id', isEqualTo: courseId)
+        .get()
+        .then((onValue) {
+
+            
+
+        });
+
+    final courseRef = FirebaseFirestore.instance
+        .collection('courses')
+        .doc(courseId.toString());
     logCourse('add_Session → course ref: ${courseRef.path}');
     // ignore: avoid_print
     print(courseRef);
