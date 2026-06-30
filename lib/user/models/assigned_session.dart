@@ -14,3 +14,16 @@ class AssignedSession {
   /// course can't be resolved.
   final String courseTitle;
 }
+
+/// The result of resolving a trainee's home data: their own int id (the `users`
+/// doc id, needed to self-enroll into appointments) plus the sessions they're
+/// assigned to. [traineeId] is null when no `users` doc matched the email.
+class MySessions {
+  const MySessions({required this.traineeId, required this.sessions});
+
+  /// The signed-in trainee's int id (== their `users` doc id). Null when the
+  /// login email matched no `users` doc.
+  final int? traineeId;
+
+  final List<AssignedSession> sessions;
+}

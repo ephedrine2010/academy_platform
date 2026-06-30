@@ -2,13 +2,16 @@
 
 **Last updated:** 2026-06-30
 
-How a trainee's **Home screen shows the sessions they're assigned to**: the
-`users` collection, where assignment happens (session authoring), and the
-read-path that powers the home list.
+How a trainee's **Home screen shows the sessions they're assigned to**, and how
+they **self-enroll into an appointment** under each session: the `users`
+collection, where assignment happens (session authoring), the read-path that
+powers the home list, and the enrollment write-path.
 
 > Scope: a trainee signs in and sees, on **Home**, the **sessions** an instructor
-> assigned them to (grouped visually by their parent course). The **Courses** and
-> **Schedule** trainee tabs still show every course for now — see
+> assigned them to (grouped visually by their parent course). Each session card
+> expands to its **appointments**, where the trainee can **enroll** (one
+> appointment per session — picking another moves them) or **leave**. The
+> **Courses** and **Schedule** trainee tabs still show every course for now — see
 > [Limitations](#7-limitations--next-steps).
 
 ---
@@ -46,7 +49,19 @@ sessions/98765…                     (top-level collection; doc id == session_i
   created_by:  "<admin uid>"        (inherited from the course)
   created_by_email: "<admin email>"
   trainees:    [1111, 222]          (int trainee ids — source of truth for "who's in")
+
+sessions/98765…/appointments/appointment1
+  date:     <Timestamp>             (logistics — set by the admin)
+  location: "Riyadh HQ"
+  appointment_id: 1234567890
+  enrolled_trainees: [1111]         (int trainee ids who self-enrolled — see §4.1)
+  enrolled_instructor: [...]        (the instructor counterpart, unchanged)
 ```
+
+A trainee holds **at most one appointment per session**, so their int id appears
+in **exactly one** appointment's `enrolled_trainees` within a given session (or
+none). Enrollment is the trainee's own write; `trainees` (assignment) stays the
+admin's.
 
 ### Why store **session ids** (not course ids) in `assigned_sessions`
 
@@ -102,10 +117,10 @@ Assignment was moved **out of the appointment dialog and onto the session**
 
 ```
 lib/user/
-  models/assigned_session.dart   # AssignedSession { session, courseTitle }
-  data/user_repository.dart      # users → assigned_sessions → resolve sessions + course titles
-  cubit/my_sessions_cubit.dart   # one-shot load by email; { sessions, loading, error }
-  ui/my_sessions_body.dart       # the Home cards (loading / error / empty / list)
+  models/assigned_session.dart   # AssignedSession { session, courseTitle } + MySessions { traineeId, sessions }
+  data/user_repository.dart      # sessions read · appointments read · enroll / unenroll writes
+  cubit/my_sessions_cubit.dart   # one-shot load by email; { sessions, traineeId, loading, error }
+  ui/my_sessions_body.dart       # the Home cards: expand → appointments → Enroll / Enrolled
 ```
 
 - [user_repository.dart](../../lib/user/data/user_repository.dart)
@@ -114,18 +129,48 @@ lib/user/
      email is **lower-cased + trimmed** first (matching `AuthCubit._resolveRole`),
      because the Firebase login email can come back in a different case than the
      hand-typed `users.email` and Firestore equality is case-sensitive.
-  2. Parse `assigned_sessions` **defensively** — each element is coerced with
+  2. Capture the matched **`users` doc id as the trainee's int id** (the
+     `traineeId`) — needed for the enroll write. Falls back to the doc's `id`
+     field if the id isn't numeric.
+  3. Parse `assigned_sessions` **defensively** — each element is coerced with
      `toString()`, so an id stored as a number still resolves (a session doc id
      is always a string like `"9876543210"`).
-  3. Fetch each session doc (skipping ids that no longer exist).
-  4. Fetch each **distinct** parent course once for its display `title`.
-  5. Returns `List<AssignedSession>`, sorted by course title then session
-     `order`.
+  4. Fetch each session doc (skipping ids that no longer exist).
+  5. Fetch each **distinct** parent course once for its display `title`.
+  6. Returns `MySessions { traineeId, sessions }` — the sessions sorted by course
+     title then session `order`.
 - [my_sessions_cubit.dart](../../lib/user/cubit/my_sessions_cubit.dart) is a
-  **one-shot load** (not a live stream); call `refresh()` to reload.
+  **one-shot load** (not a live stream); call `refresh()` to reload. It also
+  holds the resolved `traineeId` in state and exposes `loadAppointments`,
+  `enroll`, and `unenroll` (the last two no-op when `traineeId` is null).
 - [my_sessions_body.dart](../../lib/user/ui/my_sessions_body.dart) renders one
-  card per session: the parent course label, the session name, and its
-  description.
+  **expandable card** per session (course label · session name · description).
+  Expanding lazily loads that session's appointments and shows each with an
+  **Enroll** pill that flips to **Enrolled** (tap to leave) — see §4.1.
+
+### 4.1 Enrollment write-path
+
+Appointment enrollment mirrors the existing instructor pattern: each appointment
+doc carries an `enrolled_trainees` int array. Reached only **through** an
+assigned session, so there is **no reverse link** on the `users` doc (nothing to
+scan — unlike `assigned_sessions`).
+
+- [appointment.dart](../../lib/courses/models/appointment.dart) parses
+  `enrolledTraineeIds` from `enrolled_trainees` (additive; the admin side is
+  untouched).
+- `UserRepository.loadAppointments(sessionId)` reads the session's
+  `appointments` sub-collection (skipping the singular `assigned_instructor`
+  doc), sorted by date then id.
+- `UserRepository.enroll(sessionId, appointmentId, traineeId)` is **exclusive**:
+  a single **batched** write that `arrayRemove`s the trainee from every *other*
+  appointment of the session and `arrayUnion`s them into the chosen one — so the
+  "one appointment per session" rule is enforced atomically (no transient state
+  where they're in two, or in none).
+- `UserRepository.unenroll(...)` is a plain `arrayRemove` on that one
+  appointment.
+- After either write the UI **reloads that session's appointments**, so the
+  Enroll/Enrolled pills reflect the new state (one-shot, like the Home list —
+  not a live stream).
 
 ### Wiring
 
@@ -148,8 +193,13 @@ lib/user/
      `assigned_sessions`.
 3. Trainee `ali@nahdi.sa` (doc `users/1111`) opens the app → Home →
    `users where email == ali@nahdi.sa` → `assigned_sessions` → that session is
-   fetched and shown under its course's name.
-4. Later, removing `1111` from the session (edit) or deleting the session pulls
+   fetched and shown under its course's name (and `traineeId = 1111` is captured).
+4. Ali **expands** the session card → its appointments load → he taps **Enroll**
+   on `appointment2`. The batched write removes `1111` from every other
+   appointment's `enrolled_trainees` and adds it to `appointment2` → the pill
+   becomes **Enrolled**. Tapping it again (or Enroll on a different appointment)
+   moves/clears him.
+5. Later, removing `1111` from the session (edit) or deleting the session pulls
    that session id back out of `users/1111.assigned_sessions`, so it disappears
    from Ali's Home.
 
@@ -197,7 +247,17 @@ Reading the trace:
   nothing" is whether the email is also in `admins`.
 - **Home reload is manual.** `MySessionsCubit` loads once on entry (not a live
   stream). New assignments appear after a reopen / `refresh()`. A snapshot
-  listener on the `users` doc would make it live.
+  listener on the `users` doc would make it live. (Appointment lists reload
+  per-card after each enroll/leave, but likewise aren't live.)
+- **Enrollment has no capacity cap and isn't validated server-side.** Any number
+  of trainees can sit in one appointment; the "one appointment per session" rule
+  is enforced **client-side** by the exclusive batched write, so a hand-edited or
+  concurrent write could leave a trainee in two. A seats limit or a Cloud
+  Function / security rule would harden this.
+- **Enrolling doesn't require being assigned.** The Enroll button only renders
+  for sessions on Home (which already come from `assigned_sessions`), but the
+  `enroll` write itself doesn't re-check `session.trainees`, so it relies on the
+  read-path gating. Security rules should enforce "enrolled ⟹ assigned" later.
 - **Courses & Schedule tabs are still unfiltered** — they use the unscoped
   `CoursesCubit` and show every course. Only **Home** is per-trainee so far.
 - **No `users` provisioning here.** Trainee docs are assumed to exist (created in

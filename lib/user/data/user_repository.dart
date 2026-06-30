@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../academy/utils/log.dart';
+import '../../courses/models/appointment.dart';
 import '../../courses/models/course.dart';
 import '../models/assigned_session.dart';
 
@@ -27,13 +28,19 @@ class UserRepository {
   CollectionReference<Map<String, dynamic>> get _courses =>
       _db.collection('courses');
 
-  /// Loads the sessions the trainee with [email] is assigned to.
+  /// A session's nested `appointments` sub-collection.
+  CollectionReference<Map<String, dynamic>> _appointments(String sessionId) =>
+      _sessions.doc(sessionId).collection('appointments');
+
+  /// Loads the sessions the trainee with [email] is assigned to, together with
+  /// the trainee's own int id (needed to self-enroll into appointments).
   ///
-  /// 1. `users where email == <email>` (limit 1) → read `assigned_sessions`.
+  /// 1. `users where email == <email>` (limit 1) → read `assigned_sessions`;
+  ///    the `users` doc id is the trainee's int id.
   /// 2. Fetch each session doc (skipping ids that no longer exist).
   /// 3. Fetch each distinct parent course once for its title.
   /// Sorted by course title, then the session's `order`.
-  Future<List<AssignedSession>> loadAssignedSessions(String email) async {
+  Future<MySessions> loadAssignedSessions(String email) async {
     // Match the role lookup's normalization (auth_cubit lower-cases too): the
     // Firebase login email can come back in a different case than the hand-typed
     // `users.email`, and Firestore equality is case-sensitive.
@@ -43,12 +50,15 @@ class UserRepository {
         await _users.where('email', isEqualTo: needle).limit(1).get();
     if (userSnap.docs.isEmpty) {
       logCourse('  ✗ no users doc matched email "$needle"');
-      return const [];
+      return const MySessions(traineeId: null, sessions: []);
     }
 
     final userDoc = userSnap.docs.first;
     final userData = userDoc.data();
-    logCourse('  ✓ matched users/${userDoc.id} → fields: $userData');
+    // The doc id is the trainee's int id; fall back to the `id` field.
+    final traineeId =
+        int.tryParse(userDoc.id) ?? (userData['id'] as num?)?.toInt();
+    logCourse('  ✓ matched users/${userDoc.id} (traineeId=$traineeId) → fields: $userData');
 
     // Read `assigned_sessions` defensively: accept elements whether Firestore
     // stored them as strings or numbers, since a session DOC id is always a
@@ -93,6 +103,68 @@ class UserRepository {
       });
 
     logCourse('  resolved ${result.length} assigned session(s) for "$email"');
-    return result;
+    return MySessions(traineeId: traineeId, sessions: result);
+  }
+
+  /// Loads one assigned session's appointments (`/sessions/{id}/appointments`),
+  /// skipping the singular `assigned_instructor` doc, sorted by date then id.
+  /// Each [Appointment] carries its `enrolled_trainees` so the UI can show which
+  /// one (if any) the trainee is enrolled in.
+  Future<List<Appointment>> loadAppointments(String sessionId) async {
+    logCourse('loadAppointments → /sessions/$sessionId/appointments');
+    final snap = await _appointments(sessionId).get();
+    final appointments = <Appointment>[];
+    for (final doc in snap.docs) {
+      if (doc.id == 'assigned_instructor' || doc.id == 'assigned_instructors') {
+        continue;
+      }
+      appointments.add(Appointment.fromDoc(doc));
+    }
+    appointments.sort((a, b) {
+      final ad = a.dateTime, bd = b.dateTime;
+      if (ad != null && bd != null) return ad.compareTo(bd);
+      return a.id.compareTo(b.id);
+    });
+    logCourse('  ${appointments.length} appointment(s) in "$sessionId"');
+    return appointments;
+  }
+
+  /// Enrolls [traineeId] into [appointmentId] of [sessionId]. Because a trainee
+  /// may hold **one appointment per session**, this also removes them from every
+  /// other appointment of the same session — a single batched write so the radio
+  /// switch is atomic.
+  Future<void> enroll(
+    String sessionId,
+    String appointmentId,
+    int traineeId,
+  ) async {
+    logCourse(
+        'enroll → users/$traineeId into /sessions/$sessionId/appointments/$appointmentId (exclusive)');
+    final snap = await _appointments(sessionId).get();
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      if (doc.id == 'assigned_instructor' || doc.id == 'assigned_instructors') {
+        continue;
+      }
+      batch.update(doc.reference, {
+        'enrolled_trainees': doc.id == appointmentId
+            ? FieldValue.arrayUnion([traineeId])
+            : FieldValue.arrayRemove([traineeId]),
+      });
+    }
+    await batch.commit();
+  }
+
+  /// Removes [traineeId] from [appointmentId] of [sessionId] (un-enroll).
+  Future<void> unenroll(
+    String sessionId,
+    String appointmentId,
+    int traineeId,
+  ) {
+    logCourse(
+        'unenroll → users/$traineeId from /sessions/$sessionId/appointments/$appointmentId');
+    return _appointments(sessionId).doc(appointmentId).update({
+      'enrolled_trainees': FieldValue.arrayRemove([traineeId]),
+    });
   }
 }

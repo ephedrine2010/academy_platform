@@ -3,13 +3,16 @@ import 'package:equatable/equatable.dart';
 
 /// One appointment within a session's nested sub-collection, e.g.
 /// `/sessions/{sessionId}/appointments/appointment1`. Fields: `date` (Timestamp),
-/// `enrolled_instructor` (int array of instructor ids), `location` (string).
+/// `enrolled_instructor` (int array of instructor ids), `enrolled_trainees`
+/// (int array of trainee ids — who the trainee self-enrolls into), `location`
+/// (string).
 class Appointment extends Equatable {
   const Appointment({
     required this.id,
     required this.date,
     required this.dateTime,
     required this.enrolledInstructorIds,
+    required this.enrolledTraineeIds,
     required this.location,
     this.appointmentId,
   });
@@ -30,6 +33,10 @@ class Appointment extends Equatable {
 
   /// Instructor ids enrolled for this appointment (the `enrolled_instructor` array).
   final List<int> enrolledInstructorIds;
+
+  /// Trainee ids enrolled for this appointment (the `enrolled_trainees` array).
+  /// A trainee self-enrolls into exactly one appointment per session.
+  final List<int> enrolledTraineeIds;
   final String location;
 
   factory Appointment.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -40,6 +47,7 @@ class Appointment extends Equatable {
       date: _formatDate(rawDate),
       dateTime: rawDate is Timestamp ? rawDate.toDate() : null,
       enrolledInstructorIds: _intList(data['enrolled_instructor']),
+      enrolledTraineeIds: _intList(data['enrolled_trainees']),
       location: (data['location'] ?? '').toString(),
       appointmentId: (data['appointment_id'] as num?)?.toInt(),
     );
@@ -64,6 +72,13 @@ class Appointment extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, date, dateTime, enrolledInstructorIds, location, appointmentId];
+  List<Object?> get props => [
+        id,
+        date,
+        dateTime,
+        enrolledInstructorIds,
+        enrolledTraineeIds,
+        location,
+        appointmentId,
+      ];
 }
