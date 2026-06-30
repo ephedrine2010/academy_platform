@@ -48,7 +48,8 @@
       "PowerShell(git mv documentation/admin_trainer/admin_trainer_flow.md documentation/admin_trainer/admin_instructor_flow.md)",
       "PowerShell(git mv documentation/admin_trainer documentation/admin_instructor)",
       "PowerShell($ErrorActionPreference = 'Stop')",
-      "PowerShell($ErrorActionPreference='Stop')"
+      "PowerShell($ErrorActionPreference='Stop')",
+      "Bash(flutter build *)"
     ]
   }
 }

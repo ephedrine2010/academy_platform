@@ -17,6 +17,7 @@ milestone by milestone.
 - **Trainee UI (design system + Home/Courses/Schedule/Profile):** [documentation/ui_design/trainee_ui.md](documentation/ui_design/trainee_ui.md)
 - **Courses (Firestore courses → sessions → appointments + admin authoring):** [documentation/courses/courses_implementation.md](documentation/courses/courses_implementation.md)
 - **Trainee Home (assigned sessions: `users` ↔ session `trainees`):** [documentation/users/trainee_home_implementation.md](documentation/users/trainee_home_implementation.md)
+- **Instructor Today + attendance (geofence arming, mark/revoke):** [documentation/instructor/attendance_implementation.md](documentation/instructor/attendance_implementation.md)
 
 **Read the relevant docs before making non-trivial changes.**
 

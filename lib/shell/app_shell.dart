@@ -10,6 +10,7 @@ import '../admin/ui/instructors_page.dart';
 import '../auth/cubit/auth_cubit.dart';
 import '../courses/cubit/courses_cubit.dart';
 import '../courses/ui/admin_courses_page.dart';
+import '../instructor/ui/instructor_home_page.dart';
 import '../theme/app_theme.dart';
 
 /// One entry in the left navigation.
@@ -59,6 +60,15 @@ class _AppShellState extends State<AppShell> {
             builder: (_) => const InstructorsPage(),
           ),
         ],
+        if (widget.role == AppRole.instructor)
+          _Tab(
+            label: 'Today',
+            icon: TablerIcons.calendar_clock,
+            builder: (context) {
+              final user = context.read<AuthCubit>().state.user;
+              return InstructorHomePage(instructorId: user?.id ?? '');
+            },
+          ),
         _Tab(
           label: 'Courses',
           icon: TablerIcons.book,

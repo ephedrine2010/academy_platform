@@ -11,6 +11,7 @@ import '../models/appointment.dart';
 import '../models/course.dart';
 import '../models/session_detail.dart';
 import 'course_admin_dialogs.dart';
+import 'enrolled_trainees_table.dart';
 
 /// A course row that expands to lazily load and reveal its sessions; each
 /// session in turn expands to load that session's appointments. Assigned
@@ -506,60 +507,125 @@ class _AppointmentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final title = appointment.date.isEmpty ? appointment.id : appointment.date;
     final meta = [
       if (appointment.location.isNotEmpty) appointment.location,
       if (isAdmin && appointment.appointmentId != null)
         'ID ${appointment.appointmentId}',
     ].join(' · ');
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
-            child: Icon(TablerIcons.clock, size: 14, color: AppColors.muted),
+    // Non-admins see a plain read-only row (no roster, no actions).
+    if (!isAdmin) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: Icon(TablerIcons.clock, size: 14, color: AppColors.muted),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: _titleBlock(title, meta)),
+          ],
+        ),
+      );
+    }
+
+    // Admins get an expandable row revealing the enrolled-trainees table.
+    final enrolled = appointment.enrolledTraineeIds;
+    final subtitle = [
+      if (meta.isNotEmpty) meta,
+      '${enrolled.length} enrolled',
+    ].join(' · ');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          dense: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+          leading: const Icon(
+            TablerIcons.clock,
+            size: 16,
+            color: AppColors.muted,
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          title: Text(
+            title,
+            style: GoogleFonts.manrope(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink,
+            ),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: GoogleFonts.manrope(fontSize: 10.5, color: AppColors.muted),
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+          children: [
+            Row(
               children: [
-                Text(
-                  appointment.date.isEmpty ? appointment.id : appointment.date,
-                  style: GoogleFonts.manrope(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
+                _Label('Enrolled trainees'),
+                const Spacer(),
+                _IconAction(
+                  icon: TablerIcons.pencil,
+                  tooltip: 'Edit appointment',
+                  onPressed: () => _edit(context),
                 ),
-                if (meta.isNotEmpty)
-                  Text(
-                    meta,
-                    style: GoogleFonts.manrope(
-                      fontSize: 10.5,
-                      color: AppColors.muted,
-                    ),
-                  ),
+                _IconAction(
+                  icon: TablerIcons.trash,
+                  tooltip: 'Delete appointment',
+                  danger: true,
+                  onPressed: () => _delete(context),
+                ),
               ],
             ),
-          ),
-          if (isAdmin) ...[
-            _IconAction(
-              icon: TablerIcons.pencil,
-              tooltip: 'Edit appointment',
-              onPressed: () => _edit(context),
-            ),
-            _IconAction(
-              icon: TablerIcons.trash,
-              tooltip: 'Delete appointment',
-              danger: true,
-              onPressed: () => _delete(context),
-            ),
+            const SizedBox(height: 6),
+            if (enrolled.isEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'No trainees enrolled yet.',
+                  style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    color: AppColors.muted,
+                  ),
+                ),
+              )
+            else
+              EnrolledTraineesTable(traineeIds: enrolled),
           ],
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _titleBlock(String title, String meta) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.manrope(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink,
+          ),
+        ),
+        if (meta.isNotEmpty)
+          Text(
+            meta,
+            style: GoogleFonts.manrope(fontSize: 10.5, color: AppColors.muted),
+          ),
+      ],
     );
   }
 }

@@ -15,6 +15,11 @@ class Appointment extends Equatable {
     required this.enrolledTraineeIds,
     required this.location,
     this.appointmentId,
+    this.geoLat,
+    this.geoLng,
+    this.geoRadiusM,
+    this.windowHours,
+    this.attendanceOpenedAt,
   });
 
   final String id;
@@ -39,9 +44,26 @@ class Appointment extends Equatable {
   final List<int> enrolledTraineeIds;
   final String location;
 
+  /// Geofence centre for self check-in (the `geo_lat` / `geo_lng` fields), set
+  /// by the instructor when they "arm" attendance for the day. Null until armed.
+  final double? geoLat;
+  final double? geoLng;
+
+  /// Geofence radius in metres (`geo_radius_m`). Null until armed.
+  final int? geoRadiusM;
+
+  /// How many hours after [dateTime] a trainee may still self check-in
+  /// (`window_hours`). Null until armed.
+  final int? windowHours;
+
+  /// When the instructor armed attendance (`attendance_opened_at`). Non-null
+  /// here is the signal that self check-in is open for this appointment.
+  final DateTime? attendanceOpenedAt;
+
   factory Appointment.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const {};
     final rawDate = data['date'];
+    final openedAt = data['attendance_opened_at'];
     return Appointment(
       id: doc.id,
       date: _formatDate(rawDate),
@@ -50,6 +72,11 @@ class Appointment extends Equatable {
       enrolledTraineeIds: _intList(data['enrolled_trainees']),
       location: (data['location'] ?? '').toString(),
       appointmentId: (data['appointment_id'] as num?)?.toInt(),
+      geoLat: (data['geo_lat'] as num?)?.toDouble(),
+      geoLng: (data['geo_lng'] as num?)?.toDouble(),
+      geoRadiusM: (data['geo_radius_m'] as num?)?.toInt(),
+      windowHours: (data['window_hours'] as num?)?.toInt(),
+      attendanceOpenedAt: openedAt is Timestamp ? openedAt.toDate() : null,
     );
   }
 
@@ -71,6 +98,32 @@ class Appointment extends Equatable {
     return value?.toString() ?? '';
   }
 
+  /// Whether the instructor has armed self check-in for this appointment.
+  bool get attendanceOpen => attendanceOpenedAt != null;
+
+  Appointment copyWith({
+    double? geoLat,
+    double? geoLng,
+    int? geoRadiusM,
+    int? windowHours,
+    DateTime? attendanceOpenedAt,
+  }) {
+    return Appointment(
+      id: id,
+      date: date,
+      dateTime: dateTime,
+      enrolledInstructorIds: enrolledInstructorIds,
+      enrolledTraineeIds: enrolledTraineeIds,
+      location: location,
+      appointmentId: appointmentId,
+      geoLat: geoLat ?? this.geoLat,
+      geoLng: geoLng ?? this.geoLng,
+      geoRadiusM: geoRadiusM ?? this.geoRadiusM,
+      windowHours: windowHours ?? this.windowHours,
+      attendanceOpenedAt: attendanceOpenedAt ?? this.attendanceOpenedAt,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,
@@ -80,5 +133,10 @@ class Appointment extends Equatable {
         enrolledTraineeIds,
         location,
         appointmentId,
+        geoLat,
+        geoLng,
+        geoRadiusM,
+        windowHours,
+        attendanceOpenedAt,
       ];
 }
