@@ -309,6 +309,26 @@ since the Profile screen and the parked screens still use them.
 
 ## 10. Changelog
 
+### 2026-06-29 — Assignment moved to the session; trainee Home
+
+Trainee assignment moved **off the appointment and onto the session**, and a
+trainee's Home now shows the sessions they're assigned to. Full write-up:
+[documentation/users/trainee_home_implementation.md](../users/trainee_home_implementation.md).
+
+- **Session doc** gains `trainees` (int id array) + inherited `created_by` /
+  `created_by_email`. `addSession` / `editSession` take a `trainees` param and
+  mirror the link into each trainee's `users/{id}.assigned_sessions`
+  (`arrayUnion` / `arrayRemove`, skipping unknown ids). `deleteSession` /
+  `deleteCourse` unlink first.
+- **Appointments are now logistics only** (date + location). The
+  `enrolled_instructor` write and the session-level `assigned_instructor` roster
+  doc are **no longer written**; the admin session body shows **"Assigned
+  trainees"** from `session.trainees`. `loadSession` still defensively filters a
+  legacy `assigned_instructor` doc out of the appointment list.
+- **Trainee Home** reads `users where email == <login>` →
+  `assigned_sessions` → session docs (see `lib/user/`). Sessions, not courses,
+  are displayed.
+
 ### 2026-06-29 — Courses scoped to their creator (admin)
 
 Each admin now sees **only the courses they created**. "Add course" stamps

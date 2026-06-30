@@ -5,6 +5,7 @@ import '../auth/cubit/auth_cubit.dart';
 import '../courses/cubit/courses_cubit.dart';
 import '../ui/screens/user_shell.dart';
 import 'cubit/home_cubit.dart';
+import 'cubit/my_sessions_cubit.dart';
 
 /// Home experience for a plain trainee (no `admins` doc). Provides the
 /// [HomeCubit] and hosts the trainee [UserShell] — Home / Courses / Schedule /
@@ -23,13 +24,16 @@ class UserHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.select((AuthCubit c) => c.state.user);
     final name = _firstName(user?.name);
+    final email = user?.email ?? '';
     return MultiBlocProvider(
       providers: [
         BlocProvider(
           create: (_) => HomeCubit(name: name, region: _region, role: _role),
         ),
-        // Live course list from Firestore, shared by Home / Courses / Schedule.
+        // Live course list from Firestore, shared by Courses / Schedule.
         BlocProvider(create: (_) => CoursesCubit()),
+        // The trainee's assigned sessions (Home screen), keyed by sign-in email.
+        BlocProvider(create: (_) => MySessionsCubit(email: email)),
       ],
       child: UserShell(
         name: name,

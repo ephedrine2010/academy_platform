@@ -67,6 +67,13 @@ LoginPage ──► AuthCubit.signInWithEmail ──► _resolveRole(email) ─�
 > The `admins` docs are created **by hand in the Firebase console**, and the
 > stored `email` must match the sign-in email exactly (case-insensitive compare).
 
+> **A login email must be unique across `admins` and `users`.** Role resolution
+> checks `admins` **first**, so an email present in *both* collections signs the
+> person in as an admin and routes them to this shell — their trainee `UserHome`
+> (and the assigned-sessions screen) never renders. Symptom: the trainee Home is
+> empty even though assignments were written. See
+> [trainee_home_implementation.md §7](../users/trainee_home_implementation.md#7-limitations--next-steps).
+
 ### 2.3 Routing by role
 [auth_gate.dart](../../lib/auth/ui/auth_gate.dart)
 

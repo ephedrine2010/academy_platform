@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../courses/ui/courses_list_body.dart';
 import '../../theme/app_theme.dart';
 import '../../user/cubit/home_cubit.dart';
+import '../../user/ui/my_sessions_body.dart';
 import '../responsive.dart';
 import '../widgets/brand.dart';
 import '../widgets/teal_header.dart';
@@ -68,13 +68,10 @@ class HomeScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(hPad, 18, hPad, 24),
                   children: [
-                    const SectionHeader('My courses'),
+                    const SectionHeader('My sessions'),
                     const SizedBox(height: 12),
-                    const CoursesListBody(
-                      padding: EdgeInsets.zero,
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      emptyText: 'No courses assigned yet.',
+                    const MySessionsBody(
+                      emptyText: 'No sessions assigned yet.',
                     ),
                   ],
                 ),

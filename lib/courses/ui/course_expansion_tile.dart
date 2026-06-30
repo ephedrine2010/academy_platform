@@ -51,13 +51,14 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
   }
 
   Future<void> _addSession(int existingCount) async {
-    final result = await showAddSessionDialog(context);
+    final result = await showSessionDialog(context);
     if (result == null || !mounted) return;
     await context.read<CoursesCubit>().addSession(
       _course.id,
       name: result.name,
       description: result.description,
       order: existingCount + 1,
+      trainees: result.trainees,
     );
     _load();
   }
@@ -357,22 +358,24 @@ class _SessionBody extends StatelessWidget {
       session.id,
       date: result.date,
       location: result.location,
-      instructorIds: result.instructorIds,
     );
     onAppointmentsChanged();
   }
 
   Future<void> _editSession(BuildContext context) async {
-    final desc = await promptForText(
+    final result = await showSessionDialog(
       context,
-      title: 'Edit session',
-      label: 'Description',
-      initial: session.description,
+      initialName: session.name,
+      initialDescription: session.description,
+      initialTrainees: session.trainees,
+      isEdit: true,
     );
-    if (desc == null || !context.mounted) return;
+    if (result == null || !context.mounted) return;
     await context.read<CoursesCubit>().editSession(
       session.id,
-      description: desc,
+      name: result.name,
+      description: result.description,
+      trainees: result.trainees,
     );
     onSessionsChanged();
   }
@@ -409,9 +412,9 @@ class _SessionBody extends StatelessWidget {
             ),
         if (isAdmin) ...[
           const SizedBox(height: 12),
-          _Label('Assigned instructors'),
+          _Label('Assigned trainees'),
           const SizedBox(height: 6),
-          if (detail.assignedInstructorIds.isEmpty)
+          if (session.trainees.isEmpty)
             Text(
               'None assigned.',
               style: GoogleFonts.manrope(fontSize: 11, color: AppColors.muted),
@@ -421,11 +424,11 @@ class _SessionBody extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                for (final id in detail.assignedInstructorIds)
+                for (final id in session.trainees)
                   Chip(
                     visualDensity: VisualDensity.compact,
                     avatar: const Icon(TablerIcons.user, size: 14),
-                    label: Text('Instructor $id'),
+                    label: Text('Trainee $id'),
                   ),
               ],
             ),
@@ -436,7 +439,7 @@ class _SessionBody extends StatelessWidget {
             children: [
               _ActionButton(
                 icon: TablerIcons.plus,
-                label: 'Add appointment & assign',
+                label: 'Add appointment',
                 onPressed: () => _addAppointment(context),
               ),
               _ActionButton(
@@ -476,7 +479,6 @@ class _AppointmentRow extends StatelessWidget {
       context,
       initialDate: appointment.dateTime,
       initialLocation: appointment.location,
-      initialInstructorIds: appointment.enrolledInstructorIds,
       isEdit: true,
     );
     if (result == null || !context.mounted) return;
@@ -485,7 +487,6 @@ class _AppointmentRow extends StatelessWidget {
       appointment.id,
       date: result.date,
       location: result.location,
-      instructorIds: result.instructorIds,
     );
     onChanged();
   }
@@ -507,8 +508,6 @@ class _AppointmentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final meta = [
       if (appointment.location.isNotEmpty) appointment.location,
-      if (appointment.enrolledInstructorIds.isNotEmpty)
-        'Instructors: ${appointment.enrolledInstructorIds.join(', ')}',
       if (isAdmin && appointment.appointmentId != null)
         'ID ${appointment.appointmentId}',
     ].join(' · ');

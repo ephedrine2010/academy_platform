@@ -12,16 +12,23 @@ class CourseSession extends Equatable {
     required this.id,
     required this.name,
     required this.description,
+    this.courseDocId,
     this.sessionId,
     this.order = 0,
+    this.trainees = const [],
   });
 
-  /// Firestore document id within the `sessions` sub-collection (== [name]).
+  /// Firestore document id within the `sessions` collection (== the generated
+  /// `session_id`).
   final String id;
 
   /// Display name, e.g. `Health360`.
   final String name;
   final String description;
+
+  /// The parent course's document id (the `course_id` field, e.g. `care360`).
+  /// Used to resolve a session back to its course. Null for malformed docs.
+  final String? courseDocId;
 
   /// Stable 10-digit numeric id (the `session_id` field). Null for legacy docs.
   final int? sessionId;
@@ -29,19 +36,34 @@ class CourseSession extends Equatable {
   /// 1-based ordering position (the `order` field) used to sort the list.
   final int order;
 
+  /// Int ids of the trainees assigned to this session (the `trainees` array).
+  /// This is the source of truth for "who is in this session"; each trainee's
+  /// `users` doc mirrors the reverse link in its `assigned_sessions` array.
+  final List<int> trainees;
+
   factory CourseSession.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const {};
     return CourseSession(
       id: doc.id,
       name: (data['name'] ?? doc.id).toString(),
       description: (data['description'] ?? '').toString(),
+      courseDocId: (data['course_id'] as String?),
       sessionId: (data['session_id'] as num?)?.toInt(),
       order: (data['order'] as num?)?.toInt() ?? 0,
+      trainees: _intList(data['trainees']),
     );
   }
 
+  static List<int> _intList(dynamic value) {
+    if (value is List) {
+      return value.whereType<num>().map((n) => n.toInt()).toList();
+    }
+    return const [];
+  }
+
   @override
-  List<Object?> get props => [id, name, description, sessionId, order];
+  List<Object?> get props =>
+      [id, name, description, courseDocId, sessionId, order, trainees];
 }
 
 /// A course loaded from the Firestore `courses` collection.

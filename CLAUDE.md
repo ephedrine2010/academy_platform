@@ -16,6 +16,7 @@ milestone by milestone.
 - **Milestone 1 (auth + role shell + admin Regions/Contractors):** [documentation/foundationAdminImplementation.md](documentation/foundationAdminImplementation.md)
 - **Trainee UI (design system + Home/Courses/Schedule/Profile):** [documentation/ui_design/trainee_ui.md](documentation/ui_design/trainee_ui.md)
 - **Courses (Firestore courses → sessions → appointments + admin authoring):** [documentation/courses/courses_implementation.md](documentation/courses/courses_implementation.md)
+- **Trainee Home (assigned sessions: `users` ↔ session `trainees`):** [documentation/users/trainee_home_implementation.md](documentation/users/trainee_home_implementation.md)
 
 **Read the relevant docs before making non-trivial changes.**
 

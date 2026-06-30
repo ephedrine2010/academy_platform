@@ -48,6 +48,13 @@ class CourseRepository {
   CollectionReference<Map<String, dynamic>> get _sessions =>
       _db.collection('sessions');
 
+  /// Trainee directory. A trainee doc id is the trainee's int id (as a string);
+  /// fields include `email`, `name`, `id`, and the `assigned_sessions` array
+  /// (the reverse link maintained from session assignments — see
+  /// [_addSessionToTrainees] / [_removeSessionFromTrainees]).
+  CollectionReference<Map<String, dynamic>> get _users =>
+      _db.collection('users');
+
   static final _rng = Random();
 
   /// A random 10-digit positive integer (1_000_000_000 .. 9_999_999_999), used
@@ -170,34 +177,42 @@ class CourseRepository {
   /// [courseId] via the `course_id` field. The doc id is the generated 10-digit
   /// `session_id` (names can repeat across courses, so the name is a field, not
   /// the id); [order] is the 1-based position used to sort the list.
+  ///
+  /// The session inherits `created_by` / `created_by_email` from the repository's
+  /// creator scope (the admin authoring it). The assigned [trainees] are stored
+  /// on the session **and** mirrored into each trainee's `users` doc
+  /// (`assigned_sessions`) so the trainee home can read its sessions cheaply.
   Future<void> addSession(
     String courseId, {
     required String name,
     required String description,
     required int order,
+    List<int> trainees = const [],
   }) async {
     final cleanName = name.trim();
     final sessionId = _newId();
     logCourse(
-        'addSession → /sessions/$sessionId (course_id="$courseId", name="$cleanName")');
+        'addSession → /sessions/$sessionId (course_id="$courseId", name="$cleanName", trainees=$trainees)');
     await _sessions.doc(sessionId.toString()).set({
       'course_id': courseId,
       'name': cleanName,
       'description': description,
       'session_id': sessionId,
       'order': order,
+      'trainees': trainees,
+      if (creatorId != null) 'created_by': creatorId,
+      if (creatorEmail != null) 'created_by_email': creatorEmail,
     }, SetOptions(merge: true));
+    await _addSessionToTrainees(sessionId.toString(), trainees);
   }
 
   /// Creates an `appointment{N}` doc in a session's `appointments`
-  /// sub-collection and unions the assigned [instructorIds] into both the
-  /// appointment's `enrolled_instructor` and the session-level `assigned_instructor`
-  /// roster.
+  /// sub-collection. Appointments are pure logistics (date + location) — trainee
+  /// assignment lives on the session, not here.
   Future<void> addAppointment(
     String sessionId, {
     required DateTime date,
     required String location,
-    required List<int> instructorIds,
   }) async {
     final col = _appointments(sessionId);
     final existing = await col.get();
@@ -211,16 +226,8 @@ class CourseRepository {
     await col.doc(apptId).set({
       'date': Timestamp.fromDate(date),
       'location': location.trim(),
-      'enrolled_instructor': instructorIds,
       'appointment_id': appointmentId,
     });
-
-    if (instructorIds.isNotEmpty) {
-      await col.doc('assigned_instructor').set(
-        {'assign_to': FieldValue.arrayUnion(instructorIds)},
-        SetOptions(merge: true),
-      );
-    }
   }
 
   // --- Admin edits / deletes ---------------------------------------------
@@ -232,45 +239,67 @@ class CourseRepository {
   }
 
   /// Deletes a course: finds its sessions in the top-level `sessions` collection
-  /// (`where course_id == courseId`), clears each session's appointments and the
-  /// session doc, then deletes the course doc.
+  /// (`where course_id == courseId`), clears each session's appointments, unlinks
+  /// it from its trainees, deletes the session doc, then deletes the course doc.
   Future<void> deleteCourse(String courseId) async {
     logCourse('deleteCourse → /courses/$courseId (+ its sessions)');
     final sessions =
         await _sessions.where('course_id', isEqualTo: courseId).get();
     for (final session in sessions.docs) {
+      final trainees = CourseSession.fromDoc(session).trainees;
+      await _removeSessionFromTrainees(session.id, trainees);
       await _deleteSubcollection(session.reference.collection('appointments'));
       await session.reference.delete();
     }
     await _col.doc(courseId).delete();
   }
 
-  /// Updates a session's `description`. The session doc id ([sessionId]) is
-  /// fixed — only the value changes.
+  /// Updates a session's editable fields (`name`, `description`, `trainees`). The
+  /// session doc id ([sessionId]) is fixed — only the values change. Trainee
+  /// changes are reconciled against the trainees' `users` docs: newly-added
+  /// trainees get the session id, removed ones lose it (a clean 1-to-1 sync
+  /// because the reverse link stores session ids, not course ids).
   Future<void> editSession(
     String sessionId, {
+    required String name,
     required String description,
-  }) {
-    logCourse('editSession → /sessions/$sessionId');
-    return _sessions.doc(sessionId).update({'description': description});
+    required List<int> trainees,
+  }) async {
+    logCourse('editSession → /sessions/$sessionId (trainees=$trainees)');
+    final before = await _sessions.doc(sessionId).get();
+    final oldTrainees =
+        before.exists ? CourseSession.fromDoc(before).trainees : const <int>[];
+
+    await _sessions.doc(sessionId).update({
+      'name': name.trim(),
+      'description': description,
+      'trainees': trainees,
+    });
+
+    final added = trainees.where((t) => !oldTrainees.contains(t)).toList();
+    final removed = oldTrainees.where((t) => !trainees.contains(t)).toList();
+    await _addSessionToTrainees(sessionId, added);
+    await _removeSessionFromTrainees(sessionId, removed);
   }
 
-  /// Deletes a session: clears its `appointments` sub-collection, then the
-  /// session doc.
+  /// Deletes a session: unlinks it from its trainees, clears its `appointments`
+  /// sub-collection, then deletes the session doc.
   Future<void> deleteSession(String sessionId) async {
     logCourse('deleteSession → /sessions/$sessionId');
+    final snap = await _sessions.doc(sessionId).get();
+    final trainees =
+        snap.exists ? CourseSession.fromDoc(snap).trainees : const <int>[];
+    await _removeSessionFromTrainees(sessionId, trainees);
     await _deleteSubcollection(_appointments(sessionId));
     await _sessions.doc(sessionId).delete();
   }
 
-  /// Updates an appointment's `date` / `location` / `enrolled_instructor`, and
-  /// unions the instructor ids into the session-level roster.
+  /// Updates an appointment's `date` / `location` (logistics only).
   Future<void> editAppointment(
     String sessionId,
     String appointmentId, {
     required DateTime date,
     required String location,
-    required List<int> instructorIds,
   }) async {
     final col = _appointments(sessionId);
     logCourse(
@@ -278,15 +307,7 @@ class CourseRepository {
     await col.doc(appointmentId).set({
       'date': Timestamp.fromDate(date),
       'location': location.trim(),
-      'enrolled_instructor': instructorIds,
     }, SetOptions(merge: true));
-
-    if (instructorIds.isNotEmpty) {
-      await col.doc('assigned_instructor').set(
-        {'assign_to': FieldValue.arrayUnion(instructorIds)},
-        SetOptions(merge: true),
-      );
-    }
   }
 
   /// Deletes a single appointment document.
@@ -294,6 +315,46 @@ class CourseRepository {
     logCourse(
         'deleteAppointment → /sessions/$sessionId/appointments/$appointmentId');
     return _appointments(sessionId).doc(appointmentId).delete();
+  }
+
+  // --- Trainee reverse-link sync (`users.assigned_sessions`) --------------
+
+  /// Adds [sessionId] to each trainee's `assigned_sessions` array. Skips ids
+  /// with no matching `users` doc (so a typo'd id can't create a phantom user).
+  Future<void> _addSessionToTrainees(
+    String sessionId,
+    List<int> traineeIds,
+  ) async {
+    for (final id in traineeIds) {
+      final ref = _users.doc(id.toString());
+      final snap = await ref.get();
+      if (!snap.exists) {
+        logCourse('  ⚠ users/$id not found — skipping assign of $sessionId');
+        continue;
+      }
+      logCourse('  link users/$id += session $sessionId');
+      await ref.update({
+        'assigned_sessions': FieldValue.arrayUnion([sessionId]),
+      });
+    }
+  }
+
+  /// Removes [sessionId] from each trainee's `assigned_sessions` array. Because
+  /// the array stores session ids (not course ids), removal is unambiguous — no
+  /// "are they still in another session of this course?" recompute is needed.
+  Future<void> _removeSessionFromTrainees(
+    String sessionId,
+    List<int> traineeIds,
+  ) async {
+    for (final id in traineeIds) {
+      final ref = _users.doc(id.toString());
+      final snap = await ref.get();
+      if (!snap.exists) continue;
+      logCourse('  unlink users/$id -= session $sessionId');
+      await ref.update({
+        'assigned_sessions': FieldValue.arrayRemove([sessionId]),
+      });
+    }
   }
 
   /// Deletes every document in a sub-collection (batched).

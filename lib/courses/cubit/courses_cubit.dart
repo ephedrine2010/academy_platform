@@ -29,35 +29,6 @@ class CoursesCubit extends Cubit<CoursesState> {
 
   Future<void> addCourse(String name) => _repo.addCourse(name);
 
-  //manually created
-  /*Future<void> add_Session222(
-    int? courseId, {
-    required String name,
-    required String description,
-    required int order,
-  }) async {
-    // get the course document reference directly from its id (the doc id)
-
-    await FirebaseFirestore.instance
-        .collection('courses')
-        .where('course_id', isEqualTo: courseId)
-        .get()
-        .then((onValue) {
-
-            
-
-        });
-
-    final courseRef = FirebaseFirestore.instance
-        .collection('courses')
-        .doc(courseId.toString());
-    logCourse('add_Session → course ref: ${courseRef.path}');
-    // ignore: avoid_print
-    print(courseRef);
-  }*/
-
-  //-------------------------------------------------------------
-
   final CourseRepository _repo;
   late final StreamSubscription<List<Course>> _sub;
 
@@ -79,23 +50,23 @@ class CoursesCubit extends Cubit<CoursesState> {
     required String name,
     required String description,
     required int order,
+    List<int> trainees = const [],
   }) => _repo.addSession(
     courseId,
     name: name,
     description: description,
     order: order,
+    trainees: trainees,
   );
 
   Future<void> addAppointment(
     String sessionId, {
     required DateTime date,
     required String location,
-    required List<int> instructorIds,
   }) => _repo.addAppointment(
     sessionId,
     date: date,
     location: location,
-    instructorIds: instructorIds,
   );
 
   Future<void> editCourse(String courseId, {required String title}) =>
@@ -105,8 +76,15 @@ class CoursesCubit extends Cubit<CoursesState> {
 
   Future<void> editSession(
     String sessionId, {
+    required String name,
     required String description,
-  }) => _repo.editSession(sessionId, description: description);
+    required List<int> trainees,
+  }) => _repo.editSession(
+    sessionId,
+    name: name,
+    description: description,
+    trainees: trainees,
+  );
 
   Future<void> deleteSession(String sessionId) =>
       _repo.deleteSession(sessionId);
@@ -116,13 +94,11 @@ class CoursesCubit extends Cubit<CoursesState> {
     String appointmentId, {
     required DateTime date,
     required String location,
-    required List<int> instructorIds,
   }) => _repo.editAppointment(
     sessionId,
     appointmentId,
     date: date,
     location: location,
-    instructorIds: instructorIds,
   );
 
   Future<void> deleteAppointment(String sessionId, String appointmentId) =>
