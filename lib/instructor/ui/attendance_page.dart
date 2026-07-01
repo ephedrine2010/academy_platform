@@ -9,6 +9,7 @@ import '../data/instructor_repository.dart';
 import '../data/latlng_parser.dart';
 import '../models/today_appointment.dart';
 import 'attendance_table.dart';
+import 'location_picker_dialog.dart';
 
 /// Attendance screen for one appointment: arm the geofence + window, then mark
 /// the enrolled trainees present (or revoke). Reached from the instructor Home.
@@ -198,6 +199,15 @@ class _ArmPanelState extends State<_ArmPanel> {
     super.dispose();
   }
 
+  Future<void> _pickOnMap() async {
+    final current = parseLatLng(_coords.text);
+    final picked = await showLocationPickerDialog(context, initial: current);
+    if (picked == null) return;
+    setState(() {
+      _coords.text = '${picked.lat}, ${picked.lng}';
+    });
+  }
+
   void _save() {
     final coords = parseLatLng(_coords.text);
     if (coords == null) {
@@ -276,20 +286,38 @@ class _ArmPanelState extends State<_ArmPanel> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Right-click the venue in Google Maps and click the coordinates to '
-            'copy them, then paste below.',
+            'Tap "Pick on map" to drop a pin, or paste a "latitude, longitude" '
+            'pair from Google Maps.',
             style: GoogleFonts.manrope(fontSize: 11, color: AppColors.muted),
           ),
           const SizedBox(height: 10),
-          TextField(
-            controller: _coords,
-            decoration: const InputDecoration(
-              isDense: true,
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(TablerIcons.map_2, size: 18),
-              labelText: 'Location (latitude, longitude)',
-              hintText: '24.7136, 46.6753',
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _coords,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(TablerIcons.map_2, size: 18),
+                    labelText: 'Location (latitude, longitude)',
+                    hintText: '24.7136, 46.6753',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: _pickOnMap,
+                icon: const Icon(TablerIcons.map_pin, size: 18),
+                label: const Text('Pick on map'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.teal,
+                  side: const BorderSide(color: AppColors.teal),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Row(

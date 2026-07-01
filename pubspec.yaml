@@ -29,6 +29,9 @@ dependencies:
   flutter_svg: ^2.0.10
   # Brand typography: Bricolage Grotesque (display) + Manrope (UI/body).
   google_fonts: ^6.2.1
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
+  geolocator: ^14.0.2
 
 dev_dependencies:
   flutter_test:

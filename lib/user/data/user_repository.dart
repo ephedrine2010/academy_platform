@@ -32,6 +32,14 @@ class UserRepository {
   CollectionReference<Map<String, dynamic>> _appointments(String sessionId) =>
       _sessions.doc(sessionId).collection('appointments');
 
+  /// An appointment's nested `attendance` sub-collection (records keyed by
+  /// trainee id — existence == confirmed present).
+  CollectionReference<Map<String, dynamic>> _attendance(
+    String sessionId,
+    String appointmentId,
+  ) =>
+      _appointments(sessionId).doc(appointmentId).collection('attendance');
+
   /// Loads the sessions the trainee with [email] is assigned to, together with
   /// the trainee's own int id (needed to self-enroll into appointments).
   ///
@@ -96,6 +104,9 @@ class UserRepository {
         AssignedSession(
           session: s,
           courseTitle: titles[s.courseDocId] ?? '—',
+          status: traineeId == null
+              ? SessionStatus.notEnrolled
+              : await _resolveStatus(s.id, traineeId),
         ),
     ]..sort((a, b) {
         final byCourse = a.courseTitle.compareTo(b.courseTitle);
@@ -104,6 +115,36 @@ class UserRepository {
 
     logCourse('  resolved ${result.length} assigned session(s) for "$email"');
     return MySessions(traineeId: traineeId, sessions: result);
+  }
+
+  /// Resolves the trainee's [SessionStatus] on one session: which appointment
+  /// they enrolled in, and whether an attendance record confirms them present.
+  ///
+  /// - No appointment holds them → [SessionStatus.notEnrolled].
+  /// - Enrolled but no `attendance/{traineeId}` doc → [SessionStatus.enrolled].
+  /// - Enrolled **and** that record exists → [SessionStatus.attended] (fulfilled).
+  Future<SessionStatus> _resolveStatus(String sessionId, int traineeId) async {
+    final snap = await _appointments(sessionId).get();
+    String? enrolledAppointmentId;
+    for (final doc in snap.docs) {
+      if (doc.id == 'assigned_instructor' || doc.id == 'assigned_instructors') {
+        continue;
+      }
+      final enrolled = Appointment.fromDoc(doc).enrolledTraineeIds;
+      if (enrolled.contains(traineeId)) {
+        enrolledAppointmentId = doc.id;
+        break;
+      }
+    }
+    if (enrolledAppointmentId == null) return SessionStatus.notEnrolled;
+
+    final record =
+        await _attendance(sessionId, enrolledAppointmentId).doc('$traineeId').get();
+    final status =
+        record.exists ? SessionStatus.attended : SessionStatus.enrolled;
+    logCourse('  status /sessions/$sessionId → $status '
+        '(appt=$enrolledAppointmentId, attended=${record.exists})');
+    return status;
   }
 
   /// Loads one assigned session's appointments (`/sessions/{id}/appointments`),

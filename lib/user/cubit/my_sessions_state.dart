@@ -18,6 +18,19 @@ class MySessionsState extends Equatable {
   final bool loading;
   final String? error;
 
+  /// Total sessions assigned to the trainee.
+  int get total => sessions.length;
+
+  /// How many assigned sessions the trainee has **fulfilled** (confirmed present).
+  int get fulfilled => sessions.where((s) => s.fulfilled).length;
+
+  /// How many assigned sessions the trainee is booked into but hasn't attended.
+  int get pending =>
+      sessions.where((s) => s.status == SessionStatus.enrolled).length;
+
+  /// Fulfilled fraction in `0.0..1.0` (0 when nothing is assigned).
+  double get progress => total == 0 ? 0 : fulfilled / total;
+
   MySessionsState copyWith({
     List<AssignedSession>? sessions,
     int? traineeId,

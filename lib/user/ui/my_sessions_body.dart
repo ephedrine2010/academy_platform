@@ -111,14 +111,21 @@ class _SessionCardState extends State<_SessionCard> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _item.courseTitle.toUpperCase(),
-                style: GoogleFonts.manrope(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  color: accent,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _item.courseTitle.toUpperCase(),
+                      style: GoogleFonts.manrope(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                        color: accent,
+                      ),
+                    ),
+                  ),
+                  _StatusChip(status: _item.status),
+                ],
               ),
               const SizedBox(height: 2),
               Text(
@@ -363,6 +370,58 @@ class _EnrollButton extends StatelessWidget {
             GoogleFonts.manrope(fontSize: 11.5, fontWeight: FontWeight.w700),
       ),
       child: const Text('Enroll'),
+    );
+  }
+}
+
+/// Small pill on a session card showing the trainee's standing: **Completed**
+/// (fulfilled), **Booked** (enrolled, not yet attended), or **Not booked**.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final SessionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, colors, icon) = switch (status) {
+      SessionStatus.attended => (
+          'Completed',
+          StatusColors.enrolled,
+          TablerIcons.circle_check,
+        ),
+      SessionStatus.enrolled => (
+          'Booked',
+          StatusColors.inProgress,
+          TablerIcons.calendar_check,
+        ),
+      SessionStatus.notEnrolled => (
+          'Not booked',
+          StatusColors.dueSoon,
+          TablerIcons.calendar_plus,
+        ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: colors.bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: colors.fg),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.manrope(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: colors.fg,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

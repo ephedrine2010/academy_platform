@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../user/cubit/home_cubit.dart';
 import '../../user/ui/my_sessions_body.dart';
+import '../../user/ui/session_progress_card.dart';
 import '../responsive.dart';
 import '../widgets/brand.dart';
 import '../widgets/teal_header.dart';
@@ -68,6 +69,8 @@ class HomeScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(hPad, 18, hPad, 24),
                   children: [
+                    const SessionProgressCard(),
+                    const SizedBox(height: 18),
                     const SectionHeader('My sessions'),
                     const SizedBox(height: 12),
                     const MySessionsBody(

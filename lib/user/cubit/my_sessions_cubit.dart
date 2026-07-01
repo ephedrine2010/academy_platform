@@ -49,6 +49,9 @@ class MySessionsCubit extends Cubit<MySessionsState> {
     final id = state.traineeId;
     if (id == null) return;
     await _repo.enroll(sessionId, appointmentId, id);
+    // Booking can't make a session fulfilled (attendance is the instructor's
+    // call), so keep an already-attended session as-is; otherwise → enrolled.
+    _patchStatus(sessionId, SessionStatus.enrolled, keepFulfilled: true);
   }
 
   /// Un-enrolls the signed-in trainee from [appointmentId] of [sessionId].
@@ -56,5 +59,26 @@ class MySessionsCubit extends Cubit<MySessionsState> {
     final id = state.traineeId;
     if (id == null) return;
     await _repo.unenroll(sessionId, appointmentId, id);
+    _patchStatus(sessionId, SessionStatus.notEnrolled);
+  }
+
+  /// Updates one session's [SessionStatus] in place so the Home progress card
+  /// and status chip stay in sync after an enroll / leave — without a full
+  /// [refresh] (which would collapse the card the trainee is interacting with).
+  /// When [keepFulfilled] is set, a session already marked attended is left
+  /// untouched.
+  void _patchStatus(
+    String sessionId,
+    SessionStatus status, {
+    bool keepFulfilled = false,
+  }) {
+    final updated = [
+      for (final s in state.sessions)
+        if (s.session.id == sessionId && !(keepFulfilled && s.fulfilled))
+          s.copyWith(status: status)
+        else
+          s,
+    ];
+    emit(state.copyWith(sessions: updated));
   }
 }

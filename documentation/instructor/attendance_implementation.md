@@ -1,6 +1,6 @@
 # Instructor: Today's Appointments & Attendance
 
-**Last updated:** 2026-06-30
+**Last updated:** 2026-07-01
 
 How an instructor (`admin02`) records trainee attendance for an appointment.
 Covers the new **instructor Home ("Today") tab**, the **geofence arming** flow,
@@ -96,15 +96,17 @@ lib/instructor/
   ui/instructor_home_page.dart     # "Today" tab: carousel of appointment cards
   ui/attendance_page.dart          # arm geofence + roster
   ui/attendance_table.dart         # material_table_view roster + mark/revoke
+  ui/location_picker_dialog.dart   # OSM map picker: search · my-location · tap
 ```
 
 - **Today tab** ([app_shell.dart](../../lib/shell/app_shell.dart)): added for
   `AppRole.instructor` only (managers keep Dashboard/Regions/Instructors). A
   horizontal carousel of cards — course · session · time · location · enrolled
   count, with a **"Check-in open" / "Not armed"** pill. Tapping opens attendance.
-- **Attendance page**: a header card, the **geofence panel** (paste
-  `lat, lng` + radius + window hours; "Arm" → writes config & opens self
-  check-in; re-arming shows "Update" + an "Open" badge), then the roster.
+- **Attendance page**: a header card, the **geofence panel** (set the location
+  via the **"Pick on map"** dialog or by pasting `lat, lng`, plus radius + window
+  hours; "Arm" → writes config & opens self check-in; re-arming shows "Update" +
+  an "Open" badge), then the roster. Coordinate input detailed in §5.
 - **Roster** ([attendance_table.dart](../../lib/instructor/ui/attendance_table.dart)):
   `material_table_view` of enrolled trainees (profiles still mocked via
   `TraineeDirectory`) with a **Status** column — `Self-confirmed` / `Confirmed by
@@ -114,11 +116,27 @@ lib/instructor/
 
 ## 5. Coordinate input
 
-[latlng_parser.dart](../../lib/instructor/data/latlng_parser.dart) accepts a bare
-`lat, lng` pair (right-click the venue in Google Maps → click the coordinates to
-copy) **or** an `@lat,lng` segment from a desktop Maps URL. Short share links
-(`maps.app.goo.gl/…`) are **not** supported — they carry no coordinates in the
-text and would need a network redirect.
+Two ways to set the geofence centre, both feeding the same `lat, lng` text field:
+
+1. **Pick on map** ([location_picker_dialog.dart](../../lib/instructor/ui/location_picker_dialog.dart)) —
+   a dialog with an interactive **OpenStreetMap** (`flutter_map` + `latlong2`,
+   OSM tiles). **Search** an address (debounced **Nominatim** geocoder — free, no
+   API key, sends CORS headers so it works on web) to jump the map, use the
+   **my-location** button (`geolocator` — browser prompt on web, OS location on
+   native), or **tap** to drop a pin → "Use this location" writes the coordinates
+   back into the field.
+   **No API key / billing**, and works on **web** (the primary target), unlike
+   resolving Google Maps share links — which is blocked by browser CORS and would
+   need a server-side proxy. This is the primary path.
+2. **Paste** — [latlng_parser.dart](../../lib/instructor/data/latlng_parser.dart)
+   accepts a bare `lat, lng` pair (right-click the venue in Google Maps → click
+   the coordinates to copy) **or** an `@lat,lng` segment from a desktop Maps URL.
+   Short share links (`maps.app.goo.gl/…`) are **not** supported — they carry no
+   coordinates in the text and would need a network redirect.
+
+> `flutter_map`'s `LatLng` (from `latlong2`) is imported aliased (`as ll`) to
+> avoid clashing with the project's own `LatLng` in `latlng_parser.dart`; the
+> dialog returns the project type.
 
 ---
 
