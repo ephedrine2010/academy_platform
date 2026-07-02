@@ -52,6 +52,16 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
+  remove_alpha_ios: true
   image_path: "assets/brand/logo/appicon-ios-teal-1024.png"
   adaptive_icon_background: "#00444F"
   adaptive_icon_foreground: "assets/brand/logo/appicon-android-1024.png"
+  web:
+    generate: true
+    image_path: "assets/brand/logo/appicon-ios-teal-1024.png"
+    background_color: "#00444F"
+    theme_color: "#00444F"
+  windows:
+    generate: true
+    image_path: "assets/brand/logo/appicon-ios-teal-1024.png"
+    icon_size: 48
