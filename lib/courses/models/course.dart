@@ -1,6 +1,50 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
+/// How a session is delivered. Drives whether it needs a material and how
+/// completion is measured (see the training-materials brainstorm). Onboarding
+/// paths are deferred, so they are not a value here yet.
+///
+/// - [physical] — in-person, appointments + attendance; **no material**.
+/// - [selfPaced] — online, watch anytime; **requires a material**.
+/// - [webinar] — attend at a time (usually optional); material optional.
+enum SessionType {
+  physical,
+  selfPaced,
+  webinar;
+
+  static SessionType fromKey(String? key) {
+    switch (key) {
+      case 'selfPaced':
+        return SessionType.selfPaced;
+      case 'webinar':
+        return SessionType.webinar;
+      case 'physical':
+      default:
+        return SessionType.physical;
+    }
+  }
+
+  String get key => name;
+
+  String get label {
+    switch (this) {
+      case SessionType.physical:
+        return 'Physical (in-person)';
+      case SessionType.selfPaced:
+        return 'Self-paced';
+      case SessionType.webinar:
+        return 'Webinar';
+    }
+  }
+
+  /// Whether a material may be attached. Physical sessions carry none.
+  bool get usesMaterial => this != SessionType.physical;
+
+  /// Whether a material is mandatory (self-paced can't be delivered without one).
+  bool get requiresMaterial => this == SessionType.selfPaced;
+}
+
 /// One session of a course. Sessions are stored as **documents in a top-level
 /// `sessions` collection** (`sessions/{id}`), linked to their course by a
 /// `course_id` field (= the course document id). The document id is the
@@ -16,6 +60,8 @@ class CourseSession extends Equatable {
     this.sessionId,
     this.order = 0,
     this.trainees = const [],
+    this.deliveryType = SessionType.physical,
+    this.materialId,
   });
 
   /// Firestore document id within the `sessions` collection (== the generated
@@ -41,6 +87,14 @@ class CourseSession extends Equatable {
   /// `users` doc mirrors the reverse link in its `assigned_sessions` array.
   final List<int> trainees;
 
+  /// How this session is delivered (the `delivery_type` field). Legacy sessions
+  /// with no field default to [SessionType.physical] (they're in-person).
+  final SessionType deliveryType;
+
+  /// The attached material's document id (the `material_id` field), or null for
+  /// physical sessions / sessions with no material yet.
+  final String? materialId;
+
   factory CourseSession.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const {};
     return CourseSession(
@@ -51,6 +105,8 @@ class CourseSession extends Equatable {
       sessionId: (data['session_id'] as num?)?.toInt(),
       order: (data['order'] as num?)?.toInt() ?? 0,
       trainees: _intList(data['trainees']),
+      deliveryType: SessionType.fromKey(data['delivery_type'] as String?),
+      materialId: (data['material_id'] as String?),
     );
   }
 
@@ -62,8 +118,17 @@ class CourseSession extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, name, description, courseDocId, sessionId, order, trainees];
+  List<Object?> get props => [
+        id,
+        name,
+        description,
+        courseDocId,
+        sessionId,
+        order,
+        trainees,
+        deliveryType,
+        materialId,
+      ];
 }
 
 /// A course loaded from the Firestore `courses` collection.

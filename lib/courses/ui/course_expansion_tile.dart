@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../academy/utils/log.dart';
 import '../../admin/ui/admin_widgets.dart';
+import '../../materials/cubit/materials_cubit.dart';
 import '../../theme/app_theme.dart';
 import '../cubit/courses_cubit.dart';
 import '../models/appointment.dart';
@@ -52,7 +53,8 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
   }
 
   Future<void> _addSession(int existingCount) async {
-    final result = await showSessionDialog(context);
+    final materials = context.read<MaterialsCubit>().state.materials;
+    final result = await showSessionDialog(context, materials: materials);
     if (result == null || !mounted) return;
     await context.read<CoursesCubit>().addSession(
       _course.id,
@@ -60,6 +62,8 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
       description: result.description,
       order: existingCount + 1,
       trainees: result.trainees,
+      deliveryType: result.deliveryType,
+      materialId: result.materialId,
     );
     _load();
   }
@@ -248,6 +252,7 @@ class _SessionTileState extends State<_SessionTile> {
   Widget build(BuildContext context) {
     final session = widget.session;
     final subtitle = [
+      session.deliveryType.label,
       if (session.description.isNotEmpty) session.description,
       if (widget.isAdmin && session.sessionId != null)
         'ID ${session.sessionId}',
@@ -364,11 +369,15 @@ class _SessionBody extends StatelessWidget {
   }
 
   Future<void> _editSession(BuildContext context) async {
+    final materials = context.read<MaterialsCubit>().state.materials;
     final result = await showSessionDialog(
       context,
       initialName: session.name,
       initialDescription: session.description,
       initialTrainees: session.trainees,
+      initialType: session.deliveryType,
+      initialMaterialId: session.materialId,
+      materials: materials,
       isEdit: true,
     );
     if (result == null || !context.mounted) return;
@@ -377,6 +386,8 @@ class _SessionBody extends StatelessWidget {
       name: result.name,
       description: result.description,
       trainees: result.trainees,
+      deliveryType: result.deliveryType,
+      materialId: result.materialId,
     );
     onSessionsChanged();
   }

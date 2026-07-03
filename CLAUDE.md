@@ -18,6 +18,8 @@ milestone by milestone.
 - **Courses (Firestore courses → sessions → appointments + admin authoring):** [documentation/courses/courses_implementation.md](documentation/courses/courses_implementation.md)
 - **Trainee Home (assigned sessions: `users` ↔ session `trainees`):** [documentation/users/trainee_home_implementation.md](documentation/users/trainee_home_implementation.md)
 - **Instructor Today + attendance (geofence arming, mark/revoke):** [documentation/instructor/attendance_implementation.md](documentation/instructor/attendance_implementation.md)
+- **Training materials (material library, hosting, enrollment/reporting — WIP brainstorm):** [documentation/training_materials/training_materials_brainstorm.md](documentation/training_materials/training_materials_brainstorm.md)
+- **SCORM player & serving pipeline (unzip function + serveScorm proxy + web/native player):** [documentation/training_materials/scorm_player.md](documentation/training_materials/scorm_player.md)
 
 **Read the relevant docs before making non-trivial changes.**
 
@@ -36,6 +38,48 @@ milestone by milestone.
 Layers listed in the brainstorm/firstmeet docs but **not yet built** (trainees,
 courses/sessions/appointments, enrollment/attendance, Firestore security rules,
 account provisioning) — do not assume they exist.
+
+## Training materials — planned model (not built yet)
+
+Plain-language summary of the decisions in
+[training_materials_brainstorm.md](documentation/training_materials/training_materials_brainstorm.md).
+Onboarding paths are set aside for now (they need a different progress shape).
+
+**Materials are separate from sessions.**
+- An admin uploads a course as a **`.zip`**. A Cloud Function unzips it into
+  Firebase Storage. The result is a reusable **material** (`materials/{id}`) with
+  its title, entry file, type, exam info, etc.
+- Materials live in their own library. **Any** admin can attach **any** material
+  to **any** session. A session *points at* a material; it doesn't own it.
+- So: never delete a material's files just because one session is removed, and
+  block deleting a material while sessions still use it.
+
+**Enrollment = one record per (trainee + session).** `enrollments/{id}`
+- One doc holds both "this trainee is assigned" **and** "here is their progress".
+- Doc id is `sessionId_userId`, so the same trainee can't be added twice.
+- It is created the moment the admin assigns the trainee (state "not started"),
+  **not** on first open — that's the only way to see who never started / is overdue.
+- It stores both `sessionId` and `materialId`, so both questions are easy queries:
+  "who is on this session?" and "who did this material anywhere?".
+
+**Status is two fields, not one mixed enum:**
+- `lifecycleState`: `notStarted` / `inProgress` / `done` — same for every type.
+- `outcome`: `passed` / `failed` / `attended` / `absent` / `null` — depends on type.
+
+**Two completion engines, one doc:** *content* (self-paced SCORM → done +
+passed/failed) and *attendance* (physical/webinar → attended/absent). The same
+enrollment doc and one report table cover both.
+
+**Progress writes are cheap.** SCORM sends updates constantly — don't save each
+one. Save on the SCO's own commit/finish, on section change, and a ~30s safety
+timer. Store the bookmark (`lessonLocation`) + `suspendData` so **Resume** works.
+
+**Overdue** = a `dueAt` date (copied from the session) is in the past and the
+state isn't `done`. It's calculated, not stored.
+
+**Still open:** exam trust/scoring, region filtering (denormalize `regionId` onto
+the enrollment vs. join through `users`), per-session due dates, and the whole
+onboarding-path shape. See the brainstorm doc §11.
 
 ## Commands
 

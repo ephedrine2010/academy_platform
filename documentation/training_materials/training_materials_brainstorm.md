@@ -94,6 +94,20 @@ assignment / home / attendance plumbing.
 - **Onboarding path:** **sequential** — step 2 is locked until step 1 is passed.
 - **Player layout:** **framed in-app** (see §7), with fullscreen as a one-tap
   option.
+- **Material library is separate from sessions.** Admin uploads a material once
+  (a `.zip`) → it lands in a shared **`materials`** library → **any** admin can
+  attach **any** material to **any** session. A session *points at* a material;
+  it never owns one. Never delete a material's files on session delete; block
+  deleting a material still used by sessions.
+- **Upload format:** a single **`.zip`** to Firebase Storage. (Server-side unzip +
+  manifest parse is a later step — see §12; the admin enters title/type manually
+  for now.)
+- **Enrollment key:** one record per **(trainee × session)**, id `sessionId_userId`,
+  **pre-created** at assignment (so "never started / overdue" can be reported).
+  Status is split into `lifecycleState` (notStarted/inProgress/done) +
+  `outcome` (passed/failed/attended/absent/null). See §9.
+- **Onboarding paths deferred** — different progress shape; build the other three
+  types (physical · self-paced · webinar) first.
 
 ---
 
@@ -443,3 +457,89 @@ filterable by region/contractor (reuses the existing Regions/Contractors groupin
    path: ordered item builder with drag-reorder). To be detailed.
 8. **Web SCORM player** — the real build item (iframe + `window.API` bridge → Cubit
    → Firestore). To be specified.
+
+---
+
+## 12. Build order — admin side first (in progress)
+
+We're building the **admin plumbing** before any trainee viewing. What a trainee
+sees, and the whole SCORM serve/play pipeline, comes after.
+
+**Step 1 — this pass (admin only):**
+- New **`lib/materials/`** feature: `materials` collection + Firebase Storage.
+  - **Materials tab** in the manager shell (admin01 / admin02): list + **Upload**.
+  - Upload = pick a `.zip` → store at `materials/{id}/…` in Storage → write a
+    Firestore doc (title, type, size, exam info, `created_by`). Status `uploaded`.
+  - Library is **shared/unscoped** — every admin sees every material.
+- **Session gets a type + material:** add `deliveryType`
+  (`physical | selfPaced | webinar`) and `material_id` to the session doc. The
+  "Add/Edit session" dialog gains a **type dropdown** + a **material picker**
+  (hidden for `physical`; required for `selfPaced`). Trainee assignment unchanged.
+- **Scale — choosing from many materials:** each material stores a `year`
+  (auto = upload year). Both the Materials tab and the session material picker
+  are **searchable (by title) + filterable by year + type**. The picker is a
+  searchable dialog, not a dropdown. Filtering is **client-side** for now (fine
+  up to ~1–2k materials); beyond that, move the year/type legs to server-side
+  `where` queries + pagination (Firestore has no full-text search, so title
+  search stays client-side or needs a search service).
+
+**Step 2 — trainee side, slice 1 (this pass): enrollments + viewer scaffold.**
+- New **`lib/enrollments/`** feature: top-level `enrollments` collection,
+  `enrollments/{sessionId}_{userId}` (one per trainee × session).
+  - **Pre-created at assignment:** `CourseRepository.addSession` / `editSession`
+    call `EnrollmentRepository.syncSessionEnrollments` — creates a `notStarted`
+    record per assigned trainee for material-backed (self-paced) sessions,
+    prunes on unassign, removes on session/course delete. Physical/webinar
+    attendance still uses the appointment flow (not enrollments) for now.
+  - Status split: `lifecycle_state` (notStarted/inProgress/done) + `outcome`
+    (passed/failed/…); display fields (`title`, exam) denormalized at assignment.
+  - **Trainee Courses tab** shows a **"My learning"** list (their self-paced
+    enrollments) with progress + Start/Resume/Review → opens the **Material
+    Viewer** shell (§8). Opening marks the enrollment started.
+- **Viewer body is a placeholder** — the real SCORM `<iframe>` + `window.API`
+  bridge lands with the serving pipeline. `EnrollmentRepository.updateProgress`
+  is written and ready for the player to call.
+
+**Step 3 — serving pipeline (this pass): built, deploy required.**
+- New **`functions/`** package (2nd-gen Cloud Functions, Node 20):
+  - `processMaterialUpload` (Storage trigger) — unzips `materials/{id}/*.zip`
+    into `materials/{id}/extracted/…`, parses `imsmanifest.xml` for the launch
+    file + title, updates the material doc: `status` uploaded → processing →
+    ready|failed, plus `entry_point`.
+  - `serveScorm` (HTTP) — streams an extracted file with the right content-type.
+- **Served same-origin** via a Firebase **Hosting rewrite** `/scorm/** →
+  serveScorm` (firebase.json). Same-origin is required: the SCO reads
+  `window.parent.API`, which the browser blocks cross-origin. So SCORM only
+  plays on **deployed Hosting** (or the emulator), not `flutter run` alone.
+- Flutter: `TrainingMaterial` reads `entry_point` + `status`; the admin Materials
+  list shows a Pending/Processing/Ready/Failed pill.
+- Repo config added: `functions` + `hosting` + `storage`/`firestore` rules in
+  firebase.json, `.firebaserc`, `storage.rules`.
+
+**Step 4 — cross-platform SCORM player (this pass): wired + compiling, untested.**
+Full write-up: [scorm_player.md](scorm_player.md).
+- New **`lib/enrollments/scorm/`**. One `ScormPlayer` widget, platform-selected
+  by conditional import:
+  - **web** (`_web.dart`) — `<iframe>` (`HtmlElementView`) + `window.API` on the
+    parent window via `dart:js_interop`. Same-origin (Hosting rewrite).
+  - **native** (`_io.dart`, Android/iOS/Windows/macOS) — `flutter_inappwebview`
+    loading the serving URL, `window.API` injected at **document start** (a
+    `UserScript`); SCO → `callHandler('scorm', …)`. No same-origin constraint.
+- **Shared, written once:** the SCORM 1.2 `window.API` JS (`scorm_api_js.dart`,
+  non-writable `window.API` per the CLAUDE.md gotcha) and the CMI→progress
+  interpreter (`scorm_session.dart`) that decides when to persist (commit/finish
+  or meaningful change) → `updateProgress`. Resume seeds `lesson_location` /
+  `suspend_data` / entry mode into the CMI map.
+- Viewer plays the package when `status == ready`; otherwise shows a
+  processing/failed/unavailable state. Progress + resume flow through Firestore.
+- **Not runtime-tested:** compiles (analyze + `build web`) but needs a live
+  deploy (web) and a device/emulator (native) to validate. Native setup notes:
+  Android `minSdkVersion` ≥ 21 for `flutter_inappwebview`; Windows needs the
+  WebView2 runtime; set `kScormHostingOrigin` (scorm_config.dart) to your
+  Hosting domain for native.
+
+**Deferred to later passes:**
+- **Admin reporting** off `enrollments` (per-session / per-material / overdue).
+- Unify physical/webinar attendance into `enrollments`; exam trust/rules;
+  material deletion guard ("used in N sessions") for the picker; versioning;
+  CDN in front of `serveScorm`; video hosting; SCORM 2004 (`API_1484_11`).

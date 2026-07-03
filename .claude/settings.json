@@ -49,7 +49,12 @@
       "PowerShell(git mv documentation/admin_trainer documentation/admin_instructor)",
       "PowerShell($ErrorActionPreference = 'Stop')",
       "PowerShell($ErrorActionPreference='Stop')",
-      "Bash(flutter build *)"
+      "Bash(flutter build *)",
+      "PowerShell(flutter build web 2>&1)",
+      "Bash(cat .firebaserc)",
+      "Bash(ls storage.rules firestore.rules firestore.indexes.json)",
+      "Bash(ls functions *)",
+      "Bash(node --check index.js)"
     ]
   }
 }

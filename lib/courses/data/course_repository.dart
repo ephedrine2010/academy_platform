@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../academy/utils/log.dart';
+import '../../enrollments/data/enrollment_repository.dart';
 import '../models/appointment.dart';
 import '../models/course.dart';
 import '../models/session_detail.dart';
@@ -28,11 +29,18 @@ import '../models/session_detail.dart';
 class CourseRepository {
   CourseRepository({
     FirebaseFirestore? firestore,
+    EnrollmentRepository? enrollments,
     this.creatorId,
     this.creatorEmail,
-  }) : _db = firestore ?? FirebaseFirestore.instance;
+  })  : _db = firestore ?? FirebaseFirestore.instance,
+        _enrollments =
+            enrollments ?? EnrollmentRepository(firestore: firestore);
 
   final FirebaseFirestore _db;
+
+  /// Pre-creates / prunes `enrollments` as trainees are assigned to sessions
+  /// that carry a material (self-paced). See [EnrollmentRepository].
+  final EnrollmentRepository _enrollments;
 
   /// When set, the repository is scoped to one author: [watch] returns only
   /// courses whose `created_by` matches, and [addCourse] stamps `created_by` /
@@ -188,11 +196,16 @@ class CourseRepository {
     required String description,
     required int order,
     List<int> trainees = const [],
+    SessionType deliveryType = SessionType.physical,
+    String? materialId,
   }) async {
     final cleanName = name.trim();
     final sessionId = _newId();
+    // Physical sessions never carry a material; drop any stray id.
+    final effectiveMaterialId = deliveryType.usesMaterial ? materialId : null;
     logCourse(
-        'addSession → /sessions/$sessionId (course_id="$courseId", name="$cleanName", trainees=$trainees)');
+        'addSession → /sessions/$sessionId (course_id="$courseId", name="$cleanName", '
+        'type=${deliveryType.key}, material=$effectiveMaterialId, trainees=$trainees)');
     await _sessions.doc(sessionId.toString()).set({
       'course_id': courseId,
       'name': cleanName,
@@ -200,10 +213,20 @@ class CourseRepository {
       'session_id': sessionId,
       'order': order,
       'trainees': trainees,
+      'delivery_type': deliveryType.key,
+      'material_id': effectiveMaterialId,
       if (creatorId != null) 'created_by': creatorId,
       if (creatorEmail != null) 'created_by_email': creatorEmail,
     }, SetOptions(merge: true));
     await _addSessionToTrainees(sessionId.toString(), trainees);
+    await _enrollments.syncSessionEnrollments(
+      sessionId: sessionId.toString(),
+      courseId: courseId,
+      deliveryType: deliveryType,
+      materialId: effectiveMaterialId,
+      sessionName: cleanName,
+      traineeIds: trainees,
+    );
   }
 
   /// Creates an `appointment{N}` doc in a session's `appointments`
@@ -248,6 +271,7 @@ class CourseRepository {
     for (final session in sessions.docs) {
       final trainees = CourseSession.fromDoc(session).trainees;
       await _removeSessionFromTrainees(session.id, trainees);
+      await _enrollments.removeSessionEnrollments(session.id);
       await _deleteSubcollection(session.reference.collection('appointments'));
       await session.reference.delete();
     }
@@ -264,22 +288,37 @@ class CourseRepository {
     required String name,
     required String description,
     required List<int> trainees,
+    required SessionType deliveryType,
+    String? materialId,
   }) async {
-    logCourse('editSession → /sessions/$sessionId (trainees=$trainees)');
+    logCourse('editSession → /sessions/$sessionId (type=${deliveryType.key}, '
+        'material=$materialId, trainees=$trainees)');
     final before = await _sessions.doc(sessionId).get();
-    final oldTrainees =
-        before.exists ? CourseSession.fromDoc(before).trainees : const <int>[];
+    final beforeSession = before.exists ? CourseSession.fromDoc(before) : null;
+    final oldTrainees = beforeSession?.trainees ?? const <int>[];
+    final courseId = beforeSession?.courseDocId;
+    final effectiveMaterialId = deliveryType.usesMaterial ? materialId : null;
 
     await _sessions.doc(sessionId).update({
       'name': name.trim(),
       'description': description,
       'trainees': trainees,
+      'delivery_type': deliveryType.key,
+      'material_id': effectiveMaterialId,
     });
 
     final added = trainees.where((t) => !oldTrainees.contains(t)).toList();
     final removed = oldTrainees.where((t) => !trainees.contains(t)).toList();
     await _addSessionToTrainees(sessionId, added);
     await _removeSessionFromTrainees(sessionId, removed);
+    await _enrollments.syncSessionEnrollments(
+      sessionId: sessionId,
+      courseId: courseId,
+      deliveryType: deliveryType,
+      materialId: effectiveMaterialId,
+      sessionName: name.trim(),
+      traineeIds: trainees,
+    );
   }
 
   /// Deletes a session: unlinks it from its trainees, clears its `appointments`
@@ -290,6 +329,7 @@ class CourseRepository {
     final trainees =
         snap.exists ? CourseSession.fromDoc(snap).trainees : const <int>[];
     await _removeSessionFromTrainees(sessionId, trainees);
+    await _enrollments.removeSessionEnrollments(sessionId);
     await _deleteSubcollection(_appointments(sessionId));
     await _sessions.doc(sessionId).delete();
   }

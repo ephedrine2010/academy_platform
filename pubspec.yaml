@@ -15,6 +15,16 @@ dependencies:
   # Email/password sign-in and Firestore for regions/instructors/trainees.
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
+  # Firebase Storage: admins upload training material zips here (lib/materials/).
+  firebase_storage: ^12.3.2
+  # Cross-platform file picker for the material zip upload (withData: web bytes).
+  file_picker: ^8.1.2
+  # SCORM player on native (Android/iOS/Windows/macOS): the only webview with
+  # document-start script injection, needed to define window.API before the SCO
+  # runs. Web uses an <iframe> instead (see lib/enrollments/scorm/).
+  flutter_inappwebview: ^6.1.5
+  # Typed DOM/JS interop for the web SCORM player (<iframe> + window.API).
+  web: ^1.1.0
   flutter_bloc: ^8.1.6
   equatable: ^2.0.5
   webview_windows: ^0.4.0

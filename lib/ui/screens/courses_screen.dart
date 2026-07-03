@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../courses/ui/courses_list_body.dart';
+import '../../enrollments/ui/my_learning_body.dart';
 import '../responsive.dart';
+import '../widgets/brand.dart';
 import '../widgets/teal_header.dart';
 
-/// Catalogue screen — the live list of courses from the Firestore `courses`
-/// collection. (Search / tabs and per-trainee assignment land in a later
-/// milestone; for now every course is shown.)
+/// Trainee Courses screen — the trainee's **self-paced materials** ("My
+/// learning", from their enrollments) followed by the browsable course
+/// catalogue. Per the brainstorm rule, self-driven learning lives here (dated
+/// sessions stay on Home / Schedule).
 class CoursesScreen extends StatelessWidget {
   const CoursesScreen({super.key});
 
@@ -24,7 +27,7 @@ class CoursesScreen extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(top: 18),
                 child: Text(
-                  'Explore courses',
+                  'Courses',
                   style: GoogleFonts.bricolageGrotesque(
                     fontSize: 25,
                     fontWeight: FontWeight.w800,
@@ -37,9 +40,22 @@ class CoursesScreen extends StatelessWidget {
             Expanded(
               child: ContentColumn(
                 maxWidth: maxW,
-                child: const CoursesListBody(
-                  padding: EdgeInsets.fromLTRB(18, 16, 18, 24),
-                  emptyText: 'No courses available yet.',
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+                  children: [
+                    const SectionHeader('My learning'),
+                    const SizedBox(height: 12),
+                    const MyLearningBody(),
+                    const SizedBox(height: 22),
+                    const SectionHeader('Explore courses'),
+                    const SizedBox(height: 12),
+                    const CoursesListBody(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      emptyText: 'No courses available yet.',
+                    ),
+                  ],
                 ),
               ),
             ),

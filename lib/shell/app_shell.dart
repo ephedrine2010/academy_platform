@@ -11,6 +11,8 @@ import '../auth/cubit/auth_cubit.dart';
 import '../courses/cubit/courses_cubit.dart';
 import '../courses/ui/admin_courses_page.dart';
 import '../instructor/ui/instructor_home_page.dart';
+import '../materials/cubit/materials_cubit.dart';
+import '../materials/ui/materials_page.dart';
 import '../theme/app_theme.dart';
 
 /// One entry in the left navigation.
@@ -59,6 +61,11 @@ class _AppShellState extends State<AppShell> {
             icon: TablerIcons.users,
             builder: (_) => const InstructorsPage(),
           ),
+          _Tab(
+            label: 'Materials',
+            icon: TablerIcons.folder,
+            builder: (_) => const MaterialsPage(),
+          ),
         ],
         if (widget.role == AppRole.instructor)
           _Tab(
@@ -104,10 +111,19 @@ class _AppShellState extends State<AppShell> {
     );
 
     if (widget._isManager) {
+      // The shared material library sits above the tabs so both the Materials
+      // tab and the Courses tab's session dialog (material picker) can read it.
+      final user = context.read<AuthCubit>().state.user;
       shell = MultiBlocProvider(
         providers: [
           BlocProvider(create: (_) => RegionsCubit()),
           BlocProvider(create: (_) => InstructorsCubit()),
+          BlocProvider(
+            create: (_) => MaterialsCubit(
+              creatorId: user?.id,
+              creatorEmail: user?.email,
+            ),
+          ),
         ],
         child: shell,
       );

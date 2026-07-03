@@ -51,12 +51,16 @@ class CoursesCubit extends Cubit<CoursesState> {
     required String description,
     required int order,
     List<int> trainees = const [],
+    SessionType deliveryType = SessionType.physical,
+    String? materialId,
   }) => _repo.addSession(
     courseId,
     name: name,
     description: description,
     order: order,
     trainees: trainees,
+    deliveryType: deliveryType,
+    materialId: materialId,
   );
 
   Future<void> addAppointment(
@@ -79,11 +83,15 @@ class CoursesCubit extends Cubit<CoursesState> {
     required String name,
     required String description,
     required List<int> trainees,
+    required SessionType deliveryType,
+    String? materialId,
   }) => _repo.editSession(
     sessionId,
     name: name,
     description: description,
     trainees: trainees,
+    deliveryType: deliveryType,
+    materialId: materialId,
   );
 
   Future<void> deleteSession(String sessionId) =>

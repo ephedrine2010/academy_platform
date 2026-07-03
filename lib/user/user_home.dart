@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../auth/cubit/auth_cubit.dart';
 import '../courses/cubit/courses_cubit.dart';
+import '../enrollments/cubit/my_enrollments_cubit.dart';
 import '../ui/screens/user_shell.dart';
 import 'cubit/home_cubit.dart';
 import 'cubit/my_sessions_cubit.dart';
@@ -34,6 +35,8 @@ class UserHome extends StatelessWidget {
         BlocProvider(create: (_) => CoursesCubit()),
         // The trainee's assigned sessions (Home screen), keyed by sign-in email.
         BlocProvider(create: (_) => MySessionsCubit(email: email)),
+        // The trainee's self-paced enrollments ("My learning" on Courses).
+        BlocProvider(create: (_) => MyEnrollmentsCubit(email: email)),
       ],
       child: UserShell(
         name: name,
