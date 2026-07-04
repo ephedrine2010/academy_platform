@@ -5,10 +5,11 @@ web and native. This is the implementation companion to the design in
 [training_materials_brainstorm.md](training_materials_brainstorm.md) (§5 hosting,
 §8 viewer, §9 progress) — read that for the *why*; this doc is the *how*.
 
-> **Status:** built and compiling (`flutter analyze` clean, `flutter build web`
-> passes). **Not yet runtime-tested** — playback needs a live Hosting deploy
-> (web) or a device/emulator (native). SCORM API-discovery/timing bugs only
-> surface against a real package.
+> **Status:** **Web verified working** — deployed to Firebase Hosting
+> (`academyplatform-12c05.web.app`), a real package uploads → unzips → serves →
+> plays end-to-end. Functions live in **us-east1** (`processMaterialUpload` +
+> `serveScorm`). **Native (Android/iOS/Windows) is built but not yet
+> runtime-tested** — needs a device/emulator and `kScormHostingOrigin` set.
 
 ---
 
@@ -81,7 +82,9 @@ Relevant files:
 ## 3. Serving pipeline (Cloud Functions)
 
 Two 2nd-gen functions in [functions/index.js](../../functions/index.js), Node 20,
-region `us-central1`.
+region **`us-east1`** — a storage-triggered function must run in the **same
+region as the bucket** (`academyplatform-12c05.firebasestorage.app` is us-east1),
+so `REGION` and the Hosting rewrite region both use it.
 
 ### `processMaterialUpload` (Storage trigger)
 

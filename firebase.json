@@ -43,7 +43,7 @@
         "source": "/scorm/**",
         "function": {
           "functionId": "serveScorm",
-          "region": "us-central1"
+          "region": "us-east1"
         }
       },
       {

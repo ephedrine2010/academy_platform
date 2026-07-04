@@ -27,7 +27,9 @@ const AdmZip = require("adm-zip");
 
 initializeApp();
 
-const REGION = "us-central1";
+// Must match the Storage bucket's region (a storage-triggered function can only
+// listen to a bucket in its own region). This project's bucket is us-east1.
+const REGION = "us-east1";
 
 // --- content types -------------------------------------------------------
 

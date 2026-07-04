@@ -20,6 +20,7 @@ milestone by milestone.
 - **Instructor Today + attendance (geofence arming, mark/revoke):** [documentation/instructor/attendance_implementation.md](documentation/instructor/attendance_implementation.md)
 - **Training materials (material library, hosting, enrollment/reporting — WIP brainstorm):** [documentation/training_materials/training_materials_brainstorm.md](documentation/training_materials/training_materials_brainstorm.md)
 - **SCORM player & serving pipeline (unzip function + serveScorm proxy + web/native player):** [documentation/training_materials/scorm_player.md](documentation/training_materials/scorm_player.md)
+- **▶ Current status & next steps (what's deployed, native-playback handoff):** [documentation/training_materials/status_and_next_steps.md](documentation/training_materials/status_and_next_steps.md)
 
 **Read the relevant docs before making non-trivial changes.**
 

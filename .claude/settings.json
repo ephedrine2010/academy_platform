@@ -54,7 +54,18 @@
       "Bash(cat .firebaserc)",
       "Bash(ls storage.rules firestore.rules firestore.indexes.json)",
       "Bash(ls functions *)",
-      "Bash(node --check index.js)"
+      "Bash(node --check index.js)",
+      "Bash(firebase functions:list)",
+      "Bash(firebase login:list)",
+      "Bash(npm install *)",
+      "Bash(firebase deploy *)",
+      "Bash(gcloud --version)",
+      "Bash(flutter devices *)",
+      "Bash(flutter doctor *)",
+      "Bash(ls android/app/build.gradle*)",
+      "Bash(grep -iE \"minSdk|compileSdk|targetSdk|applicationId\" android/app/build.gradle*)",
+      "Bash(yes)",
+      "Bash(flutter emulators *)"
     ]
   }
 }
