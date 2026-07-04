@@ -17,9 +17,15 @@ _Last updated: 2026-07 (session that built + deployed the SCORM pipeline)._
 - **Serving + web playback: DONE and DEPLOYED, verified working.** A trainee can
   open a self-paced course from **My learning** and it **plays in the browser**,
   on the live site.
-- **Native playback (Android/iOS/Windows): code written, NOT yet tested.**
-  Blocked only by a local Android emulator that won't boot. This is the one
-  remaining task.
+- **Native playback (Android): VERIFIED WORKING** on a physical device
+  (2026-07-04). Tested via a connected Samsung SM S938B (Android 16) with
+  `flutter run`. iOS shares the same `flutter_inappwebview` path but hasn't been
+  run yet.
+- **Windows playback: DEFERRED (blocked).** Two WebView2 plugins
+  (`flutter_inappwebview_windows` + `webview_windows`) collide over the
+  one-per-thread DispatcherQueueController; Windows now shows a graceful
+  "open on web/mobile" placeholder. Full investigation + how to enable later:
+  [windows_scorm_playback.md](windows_scorm_playback.md).
 
 ---
 
@@ -73,46 +79,49 @@ firebase deploy --only hosting
 
 ---
 
-## The remaining task: native playback
+## Native playback — DONE (Android verified 2026-07-04)
 
-### Goal
-Make self-paced SCORM courses play inside the app on **Android / iOS / Windows**,
-not just the browser.
+### Goal (met on Android)
+Self-paced SCORM courses play inside the app on **Android / iOS / Windows**, not
+just the browser. Android is verified on a physical device; iOS/Windows share the
+same code path but haven't been run yet.
 
-### Approach (already coded — see `lib/enrollments/scorm/`)
+### Approach (see `lib/enrollments/scorm/`)
 - **Web** → `<iframe>` + `window.API` on the parent page (`scorm_player_web.dart`).
-- **Native** → `flutter_inappwebview` loads the cloud serving URL and injects
-  `window.API` at document-start (`scorm_player_io.dart`). One code path covers
-  Android/iOS/Windows/macOS. No same-origin constraint on native.
+- **Native** → loads the cloud serving URL and injects `window.API` at
+  document-start (`scorm_player_io.dart`). No same-origin constraint on native.
+  The WebView backend is chosen at runtime:
+  - **Android / iOS / macOS** → `flutter_inappwebview` (`InAppWebView`).
+  - **Windows** → **deferred/blocked**. A `webview_windows` (WebView2) host is
+    written and ready (`scorm_player_windows.dart`) but can't initialize while
+    `flutter_inappwebview_windows` is in the build (DispatcherQueue conflict), so
+    Windows currently shows a placeholder. Details + fix path:
+    [windows_scorm_playback.md](windows_scorm_playback.md).
+- All backends share `scorm_api_js.dart` (the injected `window.API`) and
+  `scorm_session.dart` (CMI→progress) — only the WebView shell differs.
 - The SCORM API JS (`scorm_api_js.dart`) and the CMI→progress interpreter
   (`scorm_session.dart`) are **shared** across web and native.
 - Native serving URL is built from `kScormHostingOrigin` in `scorm_config.dart`
   (currently `https://academyplatform-12c05.web.app`) — already correct.
 
-### Current blocker
-The Android **emulator won't start** on the current Windows machine
-(`flutter emulators --launch academy_test` → "exited with code 1"). This is an
-environment issue, **not a code issue** — `minSdk 23` is fine and the app is wired.
+### Fixes made to get Android working (2026-07-04)
+- Added `<uses-permission android:name="android.permission.INTERNET"/>` to
+  `android/app/src/main/AndroidManifest.xml` (auto-injected in debug, but
+  **required for release APKs** — otherwise the WebView is blank in release).
+- In `scorm_player_io.dart`: removed `transparentBackground: true` (blank-WebView
+  risk on some Android devices), added
+  `mixedContentMode: MIXED_CONTENT_ALWAYS_ALLOW`, and added diagnostic handlers
+  (`onLoadStart/Stop`, `onReceivedError`, `onReceivedHttpError`,
+  `onConsoleMessage`) that log with a `[SCORM]` tag — keep these; they're how we
+  debug silent native failures.
 
-### How to unblock + test (do this to resume)
-1. Get a working Android target. Easiest options, in order:
-   - **Physical Android phone**: Developer Options → USB debugging → plug in USB →
-     accept the prompt.
-   - **Android Studio emulator**: open **Device Manager → Create Device**, pick a
-     phone, **download a system image** (e.g. API 34), launch it. (The CLI-created
-     AVD likely had no system image — the GUI handles the download. Also ensure
-     Windows Hypervisor Platform / Hyper-V + BIOS virtualization are enabled.)
-2. Confirm it appears:
-   ```bash
-   flutter devices     # should list an Android device/emulator
-   ```
-3. Run the app on it:
-   ```bash
-   flutter run -d <device-id>
-   ```
-4. In the app: sign in as the **trainee** → **Courses → My learning** → open the
-   course. Watch whether it **plays**, is **blank**, or **errors**. Capture any
-   red errors from the run console — that's what to debug from.
+### To test on a device
+1. Physical phone: Developer Options → USB debugging → plug in USB → accept prompt.
+   (`flutter devices` should list it.) Emulator alternative: Android Studio →
+   Device Manager → Create Device → download a system image → launch.
+2. `flutter run -d <device-id>`, then sign in as **trainee** → **Courses → My
+   learning** → open the course. Manifest changes need a **full restart**, not
+   hot reload.
 
 ### If native playback misbehaves — the upgrade in reserve
 We found **[scorm-again](https://github.com/jcputney/scorm-again)** (a robust

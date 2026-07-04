@@ -159,13 +159,26 @@ class EnrollmentRepository {
 
   /// Marks an enrollment started (notStarted → inProgress) when the trainee
   /// opens it, stamping timestamps. Safe to call repeatedly.
+  ///
+  /// Runs in a transaction so it only *bumps* the state: a `done` record stays
+  /// done and its `started_at` is preserved (a plain merge-set would regress a
+  /// completed course back to inProgress on every reopen). `last_accessed_at` is
+  /// always refreshed.
   Future<void> markStarted(String enrollmentId) {
-    return _col.doc(enrollmentId).set({
-      // Only bump to inProgress from notStarted; a done record stays done.
-      'lifecycle_state': LifecycleState.inProgress.key,
-      'started_at': FieldValue.serverTimestamp(),
-      'last_accessed_at': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    final ref = _col.doc(enrollmentId);
+    return _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final state = LifecycleState.fromKey(
+          snap.data()?['lifecycle_state'] as String?);
+      final update = <String, dynamic>{
+        'last_accessed_at': FieldValue.serverTimestamp(),
+      };
+      if (state == LifecycleState.notStarted) {
+        update['lifecycle_state'] = LifecycleState.inProgress.key;
+        update['started_at'] = FieldValue.serverTimestamp();
+      }
+      tx.set(ref, update, SetOptions(merge: true));
+    });
   }
 
   /// Persists SCORM progress (used by the web player in a later slice). Writes
