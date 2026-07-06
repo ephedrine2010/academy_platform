@@ -65,7 +65,8 @@
       "Bash(ls android/app/build.gradle*)",
       "Bash(grep -iE \"minSdk|compileSdk|targetSdk|applicationId\" android/app/build.gradle*)",
       "Bash(yes)",
-      "Bash(flutter emulators *)"
+      "Bash(flutter emulators *)",
+      "PowerShell(flutter analyze lib/main.dart)"
     ]
   }
 }

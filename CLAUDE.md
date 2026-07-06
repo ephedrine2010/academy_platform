@@ -99,12 +99,6 @@ Run `flutter analyze` after changes; the project is expected to report
 > drive to link — it filled `D:` and failed with `LNK1116 … error code 112`
 > (disk full). Prefer the web build for verification.
 
-## Dev preview switch
-
-[lib/main.dart](lib/main.dart) has `const bool kSkipAuthForPreview`: `true` skips
-login and opens `AppShell(isAdmin: true)` directly (to eyeball the layout);
-`false` restores the normal login → role-gated flow.
-
 ## Architecture
 
 Flutter + **Cubit** (`flutter_bloc`) throughout. Firebase (`firebase_auth` +
@@ -113,7 +107,7 @@ Flutter + **Cubit** (`flutter_bloc`) throughout. Firebase (`firebase_auth` +
 
 ```
 lib/
-  main.dart                # app root: Firebase init, AuthCubit, theme, kSkipAuthForPreview
+  main.dart                # app root: Firebase init, AuthCubit, theme
   firebase_options.dart    # generated (flutterfire configure)
   theme/app_theme.dart     # AppColors (Nahdi palette) + AppTheme.light()
   shell/app_shell.dart     # responsive role-aware NavigationRail / Drawer + tabs

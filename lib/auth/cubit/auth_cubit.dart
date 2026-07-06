@@ -19,10 +19,10 @@ class AuthCubit extends Cubit<AuthState> {
     MicrosoftAuthService? microsoftService,
     fb.FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
-  })  : _microsoft = microsoftService ?? MicrosoftAuthService(),
-        _auth = firebaseAuth ?? fb.FirebaseAuth.instance,
-        _db = firestore ?? FirebaseFirestore.instance,
-        super(const AuthState());
+  }) : _microsoft = microsoftService ?? MicrosoftAuthService(),
+       _auth = firebaseAuth ?? fb.FirebaseAuth.instance,
+       _db = firestore ?? FirebaseFirestore.instance,
+       super(const AuthState());
 
   final MicrosoftAuthService _microsoft;
   final fb.FirebaseAuth _auth;
@@ -47,18 +47,19 @@ class AuthCubit extends Cubit<AuthState> {
         email: fbUser.email ?? trimmed,
       );
       final role = await _resolveRole(user.email);
-      _printLoginDetails(user, role);
+      //_printLoginDetails(user, role);
       emit(state.copyWith(status: AuthStatus.signedIn, user: user, role: role));
-      
     } on fb.FirebaseAuthException catch (e) {
-      logError('AuthCubit.signInWithEmail', e);
+      //logError('AuthCubit.signInWithEmail', e);
       emit(state.copyWith(status: AuthStatus.signedOut, error: _friendly(e)));
     } catch (e, s) {
-      logError('AuthCubit.signInWithEmail', e, s);
-      emit(state.copyWith(
-        status: AuthStatus.signedOut,
-        error: 'Unexpected sign-in error: $e',
-      ));
+      //logError('AuthCubit.signInWithEmail', e, s);
+      emit(
+        state.copyWith(
+          status: AuthStatus.signedOut,
+          error: 'Unexpected sign-in error: $e',
+        ),
+      );
     }
   }
 
@@ -69,29 +70,33 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final user = await _microsoft.signIn();
       final role = await _resolveRole(user.email);
-      _printLoginDetails(user, role);
+      //_printLoginDetails(user, role);
       emit(state.copyWith(status: AuthStatus.signedIn, user: user, role: role));
     } on AuthException catch (e) {
       logError('AuthCubit.signInWithMicrosoft', e);
       emit(state.copyWith(status: AuthStatus.signedOut, error: e.message));
     } catch (e, s) {
       logError('AuthCubit.signInWithMicrosoft', e, s);
-      emit(state.copyWith(
-        status: AuthStatus.signedOut,
-        error: 'Unexpected sign-in error: $e',
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.signedOut,
+          error: 'Unexpected sign-in error: $e',
+        ),
+      );
     }
   }
 
   /// Dev bypass: skip sign-in and enter the app as a (trainee) guest.
   void continueAsGuest() {
     logAuth('Continuing without sign-in (guest mode)');
-    emit(state.copyWith(
-      status: AuthStatus.signedIn,
-      user: AuthUser.guest(),
-      role: AppRole.trainee,
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        status: AuthStatus.signedIn,
+        user: AuthUser.guest(),
+        role: AppRole.trainee,
+        clearError: true,
+      ),
+    );
   }
 
   Future<void> signOut() async {
@@ -128,8 +133,11 @@ class AuthCubit extends Cubit<AuthState> {
     } catch (e, s) {
       // Most often a Firestore permission-denied (security rules blocking the
       // read) — that lands here and would otherwise look like "just a trainee".
-      logError('AuthCubit._resolveRole (read failed — check Firestore rules)',
-          e, s);
+      logError(
+        'AuthCubit._resolveRole (read failed — check Firestore rules)',
+        e,
+        s,
+      );
     }
     logAuth('No matching admin doc — role resolved: trainee');
     return AppRole.trainee;
@@ -154,10 +162,11 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /*
   void _printLoginDetails(AuthUser user, AppRole role) {
     logAuth('Sign-in successful for ${user.name} <${user.email}> as $role');
     for (final line in user.details.split('\n')) {
       logAuth(line);
     }
-  }
+  }*/
 }

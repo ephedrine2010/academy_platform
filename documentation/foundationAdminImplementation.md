@@ -125,12 +125,6 @@ flutter analyze            # expected: No issues found
 flutter run -d chrome      # primary target (web)
 ```
 
-### Dev preview switch
-[lib/main.dart](../lib/main.dart) has `const bool kSkipAuthForPreview`:
-
-- `true`  → skip login, open `AppShell(isAdmin: true)` directly (eyeball the layout).
-- `false` → normal login → role-gated flow.
-
 ### To exercise the real admin flow (Firebase console)
 1. Authentication → Sign-in method → **enable Email/Password**.
 2. Authentication → Users → **add a user** (your login).

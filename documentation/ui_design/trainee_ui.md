@@ -215,14 +215,7 @@ flutter analyze            # expected: No issues found
 flutter run -d chrome      # primary target (web); resize to see breakpoints
 ```
 
-### Dev preview switch
-[lib/main.dart](../../lib/main.dart) — `const bool kPreviewUserHome`:
-
-- `true`  → skip login, open the trainee `UserHome` directly (eyeball the layout).
-- `false` → normal login → role-gated flow. (Takes precedence over
-  `kSkipAuthForPreview`, which opens the admin shell.)
-
-A real trainee account still lands here automatically via `AuthGate`.
+A trainee account lands on `UserHome` automatically via `AuthGate`.
 
 ## 12. Known limits / not yet done
 

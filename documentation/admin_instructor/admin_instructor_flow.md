@@ -94,9 +94,6 @@ LoginPage ──► AuthCubit.signInWithEmail ──► _resolveRole(email) ─�
 - Footer shows the user's initials, role label, and a **Sign out** button
   (`AuthCubit.signOut`).
 
-> **Dev preview:** `kSkipAuthForPreview` in [main.dart](../../lib/main.dart),
-> when `true`, skips login and opens `AppShell(role: AppRole.manager)` directly.
-
 ---
 
 ## 3. Admin Dashboard
