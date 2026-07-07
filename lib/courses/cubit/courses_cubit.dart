@@ -67,10 +67,12 @@ class CoursesCubit extends Cubit<CoursesState> {
     String sessionId, {
     required DateTime date,
     required String location,
+    int? capacity,
   }) => _repo.addAppointment(
     sessionId,
     date: date,
     location: location,
+    capacity: capacity,
   );
 
   Future<void> editCourse(String courseId, {required String title}) =>
@@ -102,11 +104,13 @@ class CoursesCubit extends Cubit<CoursesState> {
     String appointmentId, {
     required DateTime date,
     required String location,
+    int? capacity,
   }) => _repo.editAppointment(
     sessionId,
     appointmentId,
     date: date,
     location: location,
+    capacity: capacity,
   );
 
   Future<void> deleteAppointment(String sessionId, String appointmentId) =>

@@ -364,6 +364,7 @@ class _SessionBody extends StatelessWidget {
       session.id,
       date: result.date,
       location: result.location,
+      capacity: result.capacity,
     );
     onAppointmentsChanged();
   }
@@ -491,6 +492,7 @@ class _AppointmentRow extends StatelessWidget {
       context,
       initialDate: appointment.dateTime,
       initialLocation: appointment.location,
+      initialCapacity: appointment.capacity,
       isEdit: true,
     );
     if (result == null || !context.mounted) return;
@@ -499,6 +501,7 @@ class _AppointmentRow extends StatelessWidget {
       appointment.id,
       date: result.date,
       location: result.location,
+      capacity: result.capacity,
     );
     onChanged();
   }
@@ -545,9 +548,12 @@ class _AppointmentRow extends StatelessWidget {
 
     // Admins get an expandable row revealing the enrolled-trainees table.
     final enrolled = appointment.enrolledTraineeIds;
+    final cap = appointment.capacity;
     final subtitle = [
       if (meta.isNotEmpty) meta,
-      '${enrolled.length} enrolled',
+      cap == null
+          ? '${enrolled.length} enrolled'
+          : '${enrolled.length} / $cap enrolled',
     ].join(' · ');
 
     return Container(

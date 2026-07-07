@@ -14,6 +14,7 @@ class Appointment extends Equatable {
     required this.enrolledInstructorIds,
     required this.enrolledTraineeIds,
     required this.location,
+    this.capacity,
     this.appointmentId,
     this.geoLat,
     this.geoLng,
@@ -44,6 +45,10 @@ class Appointment extends Equatable {
   final List<int> enrolledTraineeIds;
   final String location;
 
+  /// Maximum number of trainees allowed to self-enroll (the `capacity` field).
+  /// Null = unlimited. See [lib/user/services/enrollment_capacity_service.dart].
+  final int? capacity;
+
   /// Geofence centre for self check-in (the `geo_lat` / `geo_lng` fields), set
   /// by the instructor when they "arm" attendance for the day. Null until armed.
   final double? geoLat;
@@ -71,6 +76,7 @@ class Appointment extends Equatable {
       enrolledInstructorIds: _intList(data['enrolled_instructor']),
       enrolledTraineeIds: _intList(data['enrolled_trainees']),
       location: (data['location'] ?? '').toString(),
+      capacity: (data['capacity'] as num?)?.toInt(),
       appointmentId: (data['appointment_id'] as num?)?.toInt(),
       geoLat: (data['geo_lat'] as num?)?.toDouble(),
       geoLng: (data['geo_lng'] as num?)?.toDouble(),
@@ -115,6 +121,7 @@ class Appointment extends Equatable {
       enrolledInstructorIds: enrolledInstructorIds,
       enrolledTraineeIds: enrolledTraineeIds,
       location: location,
+      capacity: capacity,
       appointmentId: appointmentId,
       geoLat: geoLat ?? this.geoLat,
       geoLng: geoLng ?? this.geoLng,
@@ -132,6 +139,7 @@ class Appointment extends Equatable {
         enrolledInstructorIds,
         enrolledTraineeIds,
         location,
+        capacity,
         appointmentId,
         geoLat,
         geoLng,

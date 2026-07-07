@@ -17,12 +17,26 @@ milestone by milestone.
 - **Trainee UI (design system + Home/Courses/Schedule/Profile):** [documentation/ui_design/trainee_ui.md](documentation/ui_design/trainee_ui.md)
 - **Courses (Firestore courses → sessions → appointments + admin authoring):** [documentation/courses/courses_implementation.md](documentation/courses/courses_implementation.md)
 - **Trainee Home (assigned sessions: `users` ↔ session `trainees`):** [documentation/users/trainee_home_implementation.md](documentation/users/trainee_home_implementation.md)
+- **Appointment capacity (max self-enroll cap + `EnrollmentCapacityService`):** [documentation/users/appointment_capacity_implementation.md](documentation/users/appointment_capacity_implementation.md)
 - **Instructor Today + attendance (geofence arming, mark/revoke):** [documentation/instructor/attendance_implementation.md](documentation/instructor/attendance_implementation.md)
 - **Training materials (material library, hosting, enrollment/reporting — WIP brainstorm):** [documentation/training_materials/training_materials_brainstorm.md](documentation/training_materials/training_materials_brainstorm.md)
 - **SCORM player & serving pipeline (unzip function + serveScorm proxy + web/native player):** [documentation/training_materials/scorm_player.md](documentation/training_materials/scorm_player.md)
 - **▶ Current status & next steps (what's deployed, native-playback handoff):** [documentation/training_materials/status_and_next_steps.md](documentation/training_materials/status_and_next_steps.md)
 
 **Read the relevant docs before making non-trivial changes.**
+
+## Working agreements (follow these)
+
+- **Keep the code as simple as possible.** Prefer the smallest, most direct
+  solution; avoid unnecessary abstraction.
+- **Use Cubit for state management** (`flutter_bloc`) — one cubit per feature.
+- **Always name the path of any service/file you will create** before creating
+  it (e.g. `lib/<feature>/data/<name>_service.dart`), so I know where it lands.
+- **Create or update docs after every new feature** under
+  `E:\academy_platform\documentation`.
+- **Update this `CLAUDE.md` after each new feature or big change.**
+- **Always ask me before updating any doc** — tell me *which file* and *what*
+  you'll add or change, and wait for my OK.
 
 ## Current scope
 

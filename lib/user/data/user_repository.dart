@@ -4,6 +4,7 @@ import '../../academy/utils/log.dart';
 import '../../courses/models/appointment.dart';
 import '../../courses/models/course.dart';
 import '../models/assigned_session.dart';
+import '../services/enrollment_capacity_service.dart';
 
 /// Firestore access for the signed-in **trainee** (the `users` collection).
 ///
@@ -181,6 +182,11 @@ class UserRepository {
   ) async {
     logCourse(
         'enroll → users/$traineeId into /sessions/$sessionId/appointments/$appointmentId (exclusive)');
+    // Capacity guard — all capacity logic (the Firestore read + the count
+    // check) lives in EnrollmentCapacityService. Throws AppointmentFullException
+    // if the target is already full.
+    await const EnrollmentCapacityService().ensureHasSeat(sessionId, appointmentId);
+
     final snap = await _appointments(sessionId).get();
     final batch = _db.batch();
     for (final doc in snap.docs) {

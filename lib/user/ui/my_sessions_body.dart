@@ -7,6 +7,7 @@ import '../../courses/models/appointment.dart';
 import '../../theme/app_theme.dart';
 import '../cubit/my_sessions_cubit.dart';
 import '../models/assigned_session.dart';
+import '../services/enrollment_capacity_service.dart';
 
 /// Renders the signed-in trainee's assigned **sessions** (from
 /// [MySessionsCubit]) as a column of cards, with loading / error / empty states.
@@ -266,6 +267,14 @@ class _AppointmentRowState extends State<_AppointmentRow> {
     final myId = context.read<MySessionsCubit>().state.traineeId;
     final enrolled = myId != null && appt.enrolledTraineeIds.contains(myId);
 
+    const capacity = EnrollmentCapacityService();
+    final full = capacity.isFull(appt);
+    final seatsLeft = capacity.remainingSeats(appt);
+    // "3 seats left" / "Full" — only shown when the appointment is capped.
+    final seatsLabel = seatsLeft == null
+        ? null
+        : (full ? 'Full' : '$seatsLeft seat${seatsLeft == 1 ? '' : 's'} left');
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -296,15 +305,28 @@ class _AppointmentRowState extends State<_AppointmentRow> {
                       color: AppColors.muted,
                     ),
                   ),
+                if (seatsLabel != null)
+                  Text(
+                    seatsLabel,
+                    style: GoogleFonts.manrope(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: full && !enrolled ? AppColors.red : AppColors.muted,
+                    ),
+                  ),
               ],
             ),
           ),
           const SizedBox(width: 8),
           _EnrollButton(
             enrolled: enrolled,
+            // Full blocks new enrollments, but an already-enrolled trainee can
+            // still leave.
+            full: full && !enrolled,
             busy: _busy,
             accent: widget.accent,
-            onPressed: myId == null ? null : () => _toggle(enrolled),
+            onPressed:
+                myId == null || (full && !enrolled) ? null : () => _toggle(enrolled),
           ),
         ],
       ),
@@ -316,12 +338,14 @@ class _AppointmentRowState extends State<_AppointmentRow> {
 class _EnrollButton extends StatelessWidget {
   const _EnrollButton({
     required this.enrolled,
+    required this.full,
     required this.busy,
     required this.accent,
     required this.onPressed,
   });
 
   final bool enrolled;
+  final bool full;
   final bool busy;
   final Color accent;
   final VoidCallback? onPressed;
@@ -356,6 +380,22 @@ class _EnrollButton extends StatelessWidget {
           textStyle:
               GoogleFonts.manrope(fontSize: 11.5, fontWeight: FontWeight.w700),
         ),
+      );
+    }
+
+    if (full) {
+      return OutlinedButton(
+        onPressed: null,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.muted,
+          side: const BorderSide(color: AppColors.hairline),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          minimumSize: const Size(0, 32),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle:
+              GoogleFonts.manrope(fontSize: 11.5, fontWeight: FontWeight.w700),
+        ),
+        child: const Text('Full'),
       );
     }
 

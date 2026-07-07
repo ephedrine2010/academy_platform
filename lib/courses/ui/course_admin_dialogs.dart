@@ -16,8 +16,9 @@ typedef NewSession = ({
   String? materialId,
 });
 
-/// Result of the "add / edit appointment" dialog.
-typedef NewAppointment = ({DateTime date, String location});
+/// Result of the "add / edit appointment" dialog. [capacity] is the max number
+/// of trainees who may self-enroll (null = unlimited).
+typedef NewAppointment = ({DateTime date, String location, int? capacity});
 
 /// Collects a session's name, description, delivery type, attached material and
 /// assigned trainee ids — used for both add and edit (pass the existing values
@@ -278,6 +279,7 @@ Future<NewAppointment?> showAppointmentDialog(
   BuildContext context, {
   DateTime? initialDate,
   String initialLocation = '',
+  int? initialCapacity,
   bool isEdit = false,
 }) {
   return showDialog<NewAppointment>(
@@ -285,6 +287,7 @@ Future<NewAppointment?> showAppointmentDialog(
     builder: (context) => _AppointmentDialog(
       initialDate: initialDate,
       initialLocation: initialLocation,
+      initialCapacity: initialCapacity,
       isEdit: isEdit,
     ),
   );
@@ -294,11 +297,13 @@ class _AppointmentDialog extends StatefulWidget {
   const _AppointmentDialog({
     this.initialDate,
     this.initialLocation = '',
+    this.initialCapacity,
     this.isEdit = false,
   });
 
   final DateTime? initialDate;
   final String initialLocation;
+  final int? initialCapacity;
   final bool isEdit;
 
   @override
@@ -307,11 +312,15 @@ class _AppointmentDialog extends StatefulWidget {
 
 class _AppointmentDialogState extends State<_AppointmentDialog> {
   late final _locationCtrl = TextEditingController(text: widget.initialLocation);
+  late final _capacityCtrl = TextEditingController(
+    text: widget.initialCapacity?.toString() ?? '',
+  );
   late DateTime? _date = widget.initialDate;
 
   @override
   void dispose() {
     _locationCtrl.dispose();
+    _capacityCtrl.dispose();
     super.dispose();
   }
 
@@ -345,6 +354,12 @@ class _AppointmentDialogState extends State<_AppointmentDialog> {
       '${_two(d.hour)}:${_two(d.minute)}';
   static String _two(int n) => n.toString().padLeft(2, '0');
 
+  /// Blank / zero / negative / non-numeric → null (unlimited).
+  static int? _parseCapacity(String raw) {
+    final n = int.tryParse(raw.trim());
+    return (n == null || n <= 0) ? null : n;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -366,6 +381,15 @@ class _AppointmentDialogState extends State<_AppointmentDialog> {
               hintText: 'e.g. voco hotel',
             ),
           ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _capacityCtrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Max capacity',
+              hintText: 'leave blank for unlimited',
+            ),
+          ),
         ],
       ),
       actions: [
@@ -379,6 +403,7 @@ class _AppointmentDialogState extends State<_AppointmentDialog> {
               : () => Navigator.pop(context, (
                   date: _date!,
                   location: _locationCtrl.text.trim(),
+                  capacity: _parseCapacity(_capacityCtrl.text),
                 )),
           child: Text(widget.isEdit ? 'Save' : 'Add'),
         ),

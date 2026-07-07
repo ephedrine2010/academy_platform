@@ -236,6 +236,7 @@ class CourseRepository {
     String sessionId, {
     required DateTime date,
     required String location,
+    int? capacity,
   }) async {
     final col = _appointments(sessionId);
     final existing = await col.get();
@@ -245,11 +246,12 @@ class CourseRepository {
     final appointmentId = _newId();
 
     logCourse(
-        'addAppointment → /sessions/$sessionId/appointments/$apptId (appointment_id=$appointmentId)');
+        'addAppointment → /sessions/$sessionId/appointments/$apptId (appointment_id=$appointmentId, capacity=$capacity)');
     await col.doc(apptId).set({
       'date': Timestamp.fromDate(date),
       'location': location.trim(),
       'appointment_id': appointmentId,
+      if (capacity != null) 'capacity': capacity,
     });
   }
 
@@ -340,13 +342,16 @@ class CourseRepository {
     String appointmentId, {
     required DateTime date,
     required String location,
+    int? capacity,
   }) async {
     final col = _appointments(sessionId);
     logCourse(
-        'editAppointment → /sessions/$sessionId/appointments/$appointmentId');
+        'editAppointment → /sessions/$sessionId/appointments/$appointmentId (capacity=$capacity)');
     await col.doc(appointmentId).set({
       'date': Timestamp.fromDate(date),
       'location': location.trim(),
+      // null clears any previous cap (back to unlimited).
+      'capacity': capacity ?? FieldValue.delete(),
     }, SetOptions(merge: true));
   }
 

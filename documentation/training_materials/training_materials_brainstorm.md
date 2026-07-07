@@ -467,7 +467,10 @@ sees, and the whole SCORM serve/play pipeline, comes after.
 
 **Step 1 — this pass (admin only):**
 - New **`lib/materials/`** feature: `materials` collection + Firebase Storage.
-  - **Materials tab** in the manager shell (admin01 / admin02): list + **Upload**.
+  - **Materials tab** in the app shell for both **managers** (admin01) and
+    **instructors** (admin02): list + **Upload** / edit / delete. Managers get it
+    from the shared shell-level `MaterialsCubit`; the instructor tab provides its
+    own `MaterialsCubit` since that shared provider is manager-only.
   - Upload = pick a `.zip` → store at `materials/{id}/…` in Storage → write a
     Firestore doc (title, type, size, exam info, `created_by`). Status `uploaded`.
   - Library is **shared/unscoped** — every admin sees every material.

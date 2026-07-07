@@ -67,7 +67,7 @@ class _AppShellState extends State<AppShell> {
             builder: (_) => const MaterialsPage(),
           ),
         ],
-        if (widget.role == AppRole.instructor)
+        if (widget.role == AppRole.instructor) ...[
           _Tab(
             label: 'Today',
             icon: TablerIcons.calendar_clock,
@@ -76,6 +76,25 @@ class _AppShellState extends State<AppShell> {
               return InstructorHomePage(instructorId: user?.id ?? '');
             },
           ),
+          _Tab(
+            label: 'Materials',
+            icon: TablerIcons.folder,
+            // Instructors get the same shared material library as managers
+            // (browse + upload / edit / delete). The cubit is scoped to this
+            // tab since the manager-only shell provider above isn't in their
+            // tree.
+            builder: (context) {
+              final user = context.read<AuthCubit>().state.user;
+              return BlocProvider(
+                create: (_) => MaterialsCubit(
+                  creatorId: user?.id,
+                  creatorEmail: user?.email,
+                ),
+                child: const MaterialsPage(),
+              );
+            },
+          ),
+        ],
         _Tab(
           label: 'Courses',
           icon: TablerIcons.book,
