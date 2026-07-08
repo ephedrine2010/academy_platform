@@ -70,9 +70,9 @@ class HomeScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(hPad, 18, hPad, 24),
                   children: [
-                    const HomeStatsRow(),
-                    const SizedBox(height: 18),
                     const SessionProgressCard(),
+                    const SizedBox(height: 18),
+                    const HomeStatsRow(),
                     const SizedBox(height: 18),
                     const SectionHeader('My sessions'),
                     const SizedBox(height: 12),

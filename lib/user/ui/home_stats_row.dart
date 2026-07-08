@@ -4,34 +4,33 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../enrollments/cubit/my_enrollments_cubit.dart';
-import '../../enrollments/models/enrollment.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/widgets/cards.dart';
 import '../cubit/my_sessions_cubit.dart';
+import '../services/home_stats_service.dart';
 
 /// The trainee's learning tally shown on Home, just below the header:
-/// **Assigned** (assigned sessions), **Enrolled** (self-paced enrollments) and
-/// **Completed** (fulfilled sessions + finished enrollments). Live-bound to
-/// [MySessionsCubit] and [MyEnrollmentsCubit], so it stays in sync with the
-/// lists below.
+/// **Assigned** (assigned sessions), **Enrolled** (self-paced sessions) and
+/// **Completed** (finished sessions). Numbers come from [HomeStatsService] — the
+/// same source the [SessionProgressCard] uses — so the two can't disagree.
 class HomeStatsRow extends StatelessWidget {
   const HomeStatsRow({super.key});
 
   @override
   Widget build(BuildContext context) {
     final sessions = context.watch<MySessionsCubit>().state;
-    final learning = context.watch<MyEnrollmentsCubit>().state.learning;
+    final enrollments = context.watch<MyEnrollmentsCubit>().state;
+    final stats = const HomeStatsService().compute(sessions, enrollments);
 
-    final assigned = sessions.total;
-    final enrolled = learning.length;
-    final completed = sessions.fulfilled +
-        learning.where((e) => e.lifecycleState == LifecycleState.done).length;
+    // Placeholder until both sources are ready, so the numbers appear once
+    // rather than changing as each source resolves.
+    String show(int value) => stats.ready ? '$value' : '—';
 
     return Row(
       children: [
         Expanded(
           child: _StatCard(
-            value: '$assigned',
+            value: show(stats.assigned),
             label: 'Assigned',
             icon: TablerIcons.clipboard_list,
           ),
@@ -39,7 +38,7 @@ class HomeStatsRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _StatCard(
-            value: '$enrolled',
+            value: show(stats.enrolled),
             label: 'Enrolled',
             icon: TablerIcons.book,
           ),
@@ -47,7 +46,7 @@ class HomeStatsRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _StatCard(
-            value: '$completed',
+            value: show(stats.completed),
             label: 'Completed',
             icon: TablerIcons.discount_check,
           ),

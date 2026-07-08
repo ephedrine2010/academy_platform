@@ -1,6 +1,6 @@
 # Trainee Home — Assigned Sessions
 
-**Last updated:** 2026-06-30
+**Last updated:** 2026-07-08
 
 How a trainee's **Home screen shows the sessions they're assigned to**, and how
 they **self-enroll into an appointment** under each session: the `users`
@@ -117,10 +117,13 @@ Assignment was moved **out of the appointment dialog and onto the session**
 
 ```
 lib/user/
-  models/assigned_session.dart   # AssignedSession { session, courseTitle } + MySessions { traineeId, sessions }
-  data/user_repository.dart      # sessions read · appointments read · enroll / unenroll writes
-  cubit/my_sessions_cubit.dart   # one-shot load by email; { sessions, traineeId, loading, error }
-  ui/my_sessions_body.dart       # the Home cards: expand → appointments → Enroll / Enrolled
+  models/assigned_session.dart      # AssignedSession { session, courseTitle } + MySessions { traineeId, sessions }
+  data/user_repository.dart         # sessions read · appointments read · enroll / unenroll writes
+  cubit/my_sessions_cubit.dart      # one-shot load by email; { sessions, traineeId, loading, error }
+  services/home_stats_service.dart  # HomeStats + HomeStatsService — the shared Home tally (see §4.2)
+  ui/my_sessions_body.dart          # the Home cards: expand → appointments → Enroll / Enrolled
+  ui/home_stats_row.dart            # Assigned / Enrolled / Completed cards
+  ui/session_progress_card.dart     # "X of Y sessions completed" fraction + bar
 ```
 
 - [user_repository.dart](../../lib/user/data/user_repository.dart)
@@ -171,6 +174,43 @@ scan — unlike `assigned_sessions`).
 - After either write the UI **reloads that session's appointments**, so the
   Enroll/Enrolled pills reflect the new state (one-shot, like the Home list —
   not a live stream).
+
+### 4.2 Home tallies — one source of truth (`HomeStatsService`)
+
+The Home header carries two summary widgets that must always agree:
+[home_stats_row.dart](../../lib/user/ui/home_stats_row.dart) (the **Assigned /
+Enrolled / Completed** cards) and
+[session_progress_card.dart](../../lib/user/ui/session_progress_card.dart) (the
+big **"X of Y sessions completed"** fraction + bar). Both read their numbers from
+**one** pure helper,
+[home_stats_service.dart](../../lib/user/services/home_stats_service.dart)
+(`HomeStats` + `HomeStatsService`), so they can't drift apart.
+
+**Why a shared service is needed.** Everything a trainee is assigned is a
+**session**; a session is finished or not. But *how* "finished" is measured
+depends on the delivery type, and the signal lives in two different places:
+
+- A **self-paced** session appears in **both** `users.assigned_sessions`
+  (→ `MySessionsCubit`, counted in `total`) **and** the `enrollments` collection
+  (→ `MyEnrollmentsCubit`) — see `addSession` in
+  [course_repository.dart](../../lib/courses/data/course_repository.dart), which
+  mirrors every session type into `assigned_sessions` *and* creates an enrollment.
+- Its completion lives **only** in the enrollment (`lifecycleState == done`).
+  `UserRepository._resolveStatus` looks only at appointments + attendance, so a
+  finished self-paced session never becomes `fulfilled`.
+
+So `HomeStatsService.compute(sessions, enrollments)` indexes the **done**
+enrollments by `sessionId`, then walks the assigned sessions counting each one
+**once** as finished when it's either `fulfilled` (attended) **or** has a done
+enrollment. It exposes `assigned` (all sessions), `enrolled` (the self-paced
+subset), `completed`, `pending` (booked, not finished), `progress`, and a `ready`
+flag (false until *both* sources have loaded, so the numbers appear once instead
+of ticking as each source resolves).
+
+> **Gotcha:** don't recompute "completed" from `MySessionsCubit` alone — that was
+> the original bug (the progress card counted attendance-only, the stats row added
+> enrollments, so they showed different numbers). Both widgets must go through
+> `HomeStatsService`.
 
 ### Wiring
 

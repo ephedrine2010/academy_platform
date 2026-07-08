@@ -3,27 +3,32 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../enrollments/cubit/my_enrollments_cubit.dart';
 import '../../theme/app_theme.dart';
 import '../cubit/my_sessions_cubit.dart';
+import '../services/home_stats_service.dart';
 
 /// A summary card for the trainee Home: how many of their assigned sessions
-/// they've **fulfilled** (confirmed present), shown as a big fraction, a
-/// progress bar, and pending/completed counts. Reads [MySessionsCubit] state, so
-/// it stays in sync with the session list. Hides itself while loading, on error,
-/// or when nothing is assigned (the list below already shows those states).
+/// they've **finished** (attended, or the self-paced material completed), shown
+/// as a big fraction, a progress bar, and pending/completed counts. Numbers come
+/// from [HomeStatsService] — the same source the [HomeStatsRow] uses — so the two
+/// can't disagree. Hides itself while loading, on error, or when nothing is
+/// assigned (the list below already shows those states).
 class SessionProgressCard extends StatelessWidget {
   const SessionProgressCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<MySessionsCubit>().state;
-    if (state.loading || state.error != null || state.total == 0) {
+    final sessions = context.watch<MySessionsCubit>().state;
+    final enrollments = context.watch<MyEnrollmentsCubit>().state;
+    final stats = const HomeStatsService().compute(sessions, enrollments);
+    if (!stats.ready || sessions.error != null || stats.assigned == 0) {
       return const SizedBox.shrink();
     }
 
-    final done = state.fulfilled;
-    final total = state.total;
-    final pct = (state.progress * 100).round();
+    final done = stats.completed;
+    final total = stats.assigned;
+    final pct = (stats.progress * 100).round();
     final allDone = done == total;
 
     return Container(
@@ -92,16 +97,16 @@ class SessionProgressCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
-              value: state.progress,
+              value: stats.progress,
               minHeight: 8,
               backgroundColor: Colors.white.withValues(alpha: 0.16),
               valueColor: const AlwaysStoppedAnimation(AppColors.lime),
             ),
           ),
-          if (state.pending > 0) ...[
+          if (stats.pending > 0) ...[
             const SizedBox(height: 10),
             Text(
-              '${state.pending} upcoming ${state.pending == 1 ? 'session' : 'sessions'} booked',
+              '${stats.pending} upcoming ${stats.pending == 1 ? 'session' : 'sessions'} booked',
               style: GoogleFonts.manrope(
                 fontSize: 11.5,
                 color: AppColors.tealCaption,

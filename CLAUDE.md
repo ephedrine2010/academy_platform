@@ -178,6 +178,14 @@ events via `window.chrome.webview.postMessage` → `ScormPlayer._onWebMessage` �
   hook is `addScriptToExecuteOnDocumentCreated`.
 - **Assets must be declared per-folder** in `pubspec.yaml` (`assets/golf/`,
   `assets/golf/Etiquette/`, …) — Flutter asset globbing is not recursive.
+- **Trainee Home tallies go through `lib/user/services/home_stats_service.dart`.**
+  A self-paced session appears in *both* `users.assigned_sessions` (→
+  `MySessionsCubit`) and the `enrollments` collection (→ `MyEnrollmentsCubit`);
+  its completion lives only in the enrollment (`lifecycleState == done`), **not**
+  attendance. `HomeStatsService` joins the two and counts each session once
+  (attended OR enrollment done), so the stats row and the progress card share one
+  source of truth. Don't recompute "completed" from `MySessionsCubit` alone or
+  the two widgets drift apart again.
 
 ## Conventions
 
