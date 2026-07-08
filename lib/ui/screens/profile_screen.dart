@@ -97,16 +97,6 @@ class ProfileScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
                   children: [
-                    Row(
-                      children: const [
-                        Expanded(child: _StatCard(value: '6', label: 'Enrolled', icon: TablerIcons.book)),
-                        SizedBox(width: 12),
-                        Expanded(child: _StatCard(value: '3', label: 'Completed', icon: TablerIcons.discount_check)),
-                        SizedBox(width: 12),
-                        Expanded(child: _StatCard(value: '3', label: 'Certificates', icon: TablerIcons.certificate)),
-                      ],
-                    ),
-                    const SizedBox(height: 22),
                     const SectionHeader('Certificates'),
                     const SizedBox(height: 8),
                     for (final cert in DemoData.certificates) ...[
@@ -127,40 +117,6 @@ class ProfileScreen extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.value, required this.label, required this.icon});
-
-  final String value;
-  final String label;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      child: Column(
-        children: [
-          Icon(icon, size: 22, color: AppColors.teal),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: GoogleFonts.bricolageGrotesque(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: GoogleFonts.manrope(fontSize: 10.5, color: AppColors.muted),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -14,6 +14,28 @@ import '../models/session_detail.dart';
 import 'course_admin_dialogs.dart';
 import 'enrolled_trainees_table.dart';
 
+/// Runs a Firestore [write], surfacing any failure as a SnackBar (and a logged
+/// error) instead of an unhandled exception that trips the debugger. Returns
+/// true on success so callers can gate their follow-up (reload / refresh).
+Future<bool> _guardWrite(
+  BuildContext context,
+  String action,
+  Future<void> Function() write,
+) async {
+  try {
+    await write();
+    return true;
+  } catch (e, s) {
+    logError(action, e, s);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not $action: $e')),
+      );
+    }
+    return false;
+  }
+}
+
 /// A course row that expands to lazily load and reveal its sessions; each
 /// session in turn expands to load that session's appointments. Assigned
 /// instructors are shown under a session only when [isAdmin] is true.
@@ -56,16 +78,20 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
     final materials = context.read<MaterialsCubit>().state.materials;
     final result = await showSessionDialog(context, materials: materials);
     if (result == null || !mounted) return;
-    await context.read<CoursesCubit>().addSession(
-      _course.id,
-      name: result.name,
-      description: result.description,
-      order: existingCount + 1,
-      trainees: result.trainees,
-      deliveryType: result.deliveryType,
-      materialId: result.materialId,
+    final ok = await _guardWrite(
+      context,
+      'add session',
+      () => context.read<CoursesCubit>().addSession(
+        _course.id,
+        name: result.name,
+        description: result.description,
+        order: existingCount + 1,
+        trainees: result.trainees,
+        deliveryType: result.deliveryType,
+        materialId: result.materialId,
+      ),
     );
-    _load();
+    if (ok && mounted) _load();
   }
 
   Future<void> _editCourse() async {
@@ -76,7 +102,11 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
       initial: _course.title,
     );
     if (title == null || title.isEmpty || !mounted) return;
-    await context.read<CoursesCubit>().editCourse(_course.id, title: title);
+    await _guardWrite(
+      context,
+      'edit course',
+      () => context.read<CoursesCubit>().editCourse(_course.id, title: title),
+    );
   }
 
   Future<void> _deleteCourse() async {
@@ -87,7 +117,11 @@ class _CourseExpansionTileState extends State<CourseExpansionTile> {
           'This also removes all its sessions and their appointments.',
     );
     if (!ok || !mounted) return;
-    await context.read<CoursesCubit>().deleteCourse(_course.id);
+    await _guardWrite(
+      context,
+      'delete course',
+      () => context.read<CoursesCubit>().deleteCourse(_course.id),
+    );
   }
 
   @override
@@ -360,13 +394,17 @@ class _SessionBody extends StatelessWidget {
   Future<void> _addAppointment(BuildContext context) async {
     final result = await showAppointmentDialog(context);
     if (result == null || !context.mounted) return;
-    await context.read<CoursesCubit>().addAppointment(
-      session.id,
-      date: result.date,
-      location: result.location,
-      capacity: result.capacity,
+    final ok = await _guardWrite(
+      context,
+      'add appointment',
+      () => context.read<CoursesCubit>().addAppointment(
+        session.id,
+        date: result.date,
+        location: result.location,
+        capacity: result.capacity,
+      ),
     );
-    onAppointmentsChanged();
+    if (ok) onAppointmentsChanged();
   }
 
   Future<void> _editSession(BuildContext context) async {
@@ -382,15 +420,19 @@ class _SessionBody extends StatelessWidget {
       isEdit: true,
     );
     if (result == null || !context.mounted) return;
-    await context.read<CoursesCubit>().editSession(
-      session.id,
-      name: result.name,
-      description: result.description,
-      trainees: result.trainees,
-      deliveryType: result.deliveryType,
-      materialId: result.materialId,
+    final ok = await _guardWrite(
+      context,
+      'edit session',
+      () => context.read<CoursesCubit>().editSession(
+        session.id,
+        name: result.name,
+        description: result.description,
+        trainees: result.trainees,
+        deliveryType: result.deliveryType,
+        materialId: result.materialId,
+      ),
     );
-    onSessionsChanged();
+    if (ok) onSessionsChanged();
   }
 
   Future<void> _deleteSession(BuildContext context) async {
@@ -399,8 +441,12 @@ class _SessionBody extends StatelessWidget {
       message: 'Delete session “${session.name}” and its appointments?',
     );
     if (!ok || !context.mounted) return;
-    await context.read<CoursesCubit>().deleteSession(session.id);
-    onSessionsChanged();
+    final deleted = await _guardWrite(
+      context,
+      'delete session',
+      () => context.read<CoursesCubit>().deleteSession(session.id),
+    );
+    if (deleted) onSessionsChanged();
   }
 
   @override
@@ -496,14 +542,18 @@ class _AppointmentRow extends StatelessWidget {
       isEdit: true,
     );
     if (result == null || !context.mounted) return;
-    await context.read<CoursesCubit>().editAppointment(
-      sessionId,
-      appointment.id,
-      date: result.date,
-      location: result.location,
-      capacity: result.capacity,
+    final ok = await _guardWrite(
+      context,
+      'edit appointment',
+      () => context.read<CoursesCubit>().editAppointment(
+        sessionId,
+        appointment.id,
+        date: result.date,
+        location: result.location,
+        capacity: result.capacity,
+      ),
     );
-    onChanged();
+    if (ok) onChanged();
   }
 
   Future<void> _delete(BuildContext context) async {
@@ -512,11 +562,15 @@ class _AppointmentRow extends StatelessWidget {
       message: 'Delete appointment “${appointment.id}”?',
     );
     if (!ok || !context.mounted) return;
-    await context.read<CoursesCubit>().deleteAppointment(
-      sessionId,
-      appointment.id,
+    final deleted = await _guardWrite(
+      context,
+      'delete appointment',
+      () => context.read<CoursesCubit>().deleteAppointment(
+        sessionId,
+        appointment.id,
+      ),
     );
-    onChanged();
+    if (deleted) onChanged();
   }
 
   @override

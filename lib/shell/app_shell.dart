@@ -101,11 +101,26 @@ class _AppShellState extends State<AppShell> {
           builder: (context) {
             // Scope the admin's courses to the courses they created.
             final user = context.read<AuthCubit>().state.user;
-            return BlocProvider(
-              create: (_) => CoursesCubit(
-                creatorId: user?.id,
-                creatorEmail: user?.email,
-              ),
+            return MultiBlocProvider(
+              providers: [
+                BlocProvider(
+                  create: (_) => CoursesCubit(
+                    creatorId: user?.id,
+                    creatorEmail: user?.email,
+                  ),
+                ),
+                // The session dialog's material picker reads MaterialsCubit.
+                // Managers already have it shell-wide (below); non-managers
+                // (instructors) don't, so scope one to this tab for them —
+                // same pattern as the instructor Materials tab above.
+                if (!widget._isManager)
+                  BlocProvider(
+                    create: (_) => MaterialsCubit(
+                      creatorId: user?.id,
+                      creatorEmail: user?.email,
+                    ),
+                  ),
+              ],
               child: const AdminCoursesPage(),
             );
           },
