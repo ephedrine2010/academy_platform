@@ -39,6 +39,20 @@ class AttendancePage extends StatelessWidget {
             style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
           ),
           backgroundColor: AppColors.surface,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: IconButton(
+                icon: const Icon(TablerIcons.x, size: 20),
+                tooltip: 'Close',
+                onPressed: () => Navigator.of(context).maybePop(),
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.teal,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
         ),
         body: BlocBuilder<AttendanceCubit, AttendanceState>(
           builder: (context, state) {
